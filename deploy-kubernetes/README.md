@@ -69,6 +69,19 @@ kubectl get nodes -l node-role.kubernetes.io/master=true
    kubectl logs -n [namespace] -l app.kubernetes.io/name=sipeed-fan-controller -f
    ```
 
+4. Test temperature reading (optional but recommended):
+   ```bash
+   # Check temp exporter pod logs
+   kubectl logs -n [namespace] -l app.kubernetes.io/name=sipeed-temp-exporter
+   
+   # Test temperature endpoint from within cluster
+   kubectl run -it --rm debug --image=alpine --restart=Never -- wget -qO- http://sipeed-temp-exporter:8080/temp
+   
+   # Or port-forward and test locally
+   kubectl port-forward -n [namespace] svc/sipeed-temp-exporter 8080:8080
+   curl http://localhost:8080/temp
+   ```
+
 ## Configuration
 
 The deployment can be customized through the `helm/values.yaml` file:
@@ -128,9 +141,17 @@ The deployment consists of:
 2. **Temperature Exporter DaemonSet** (Worker Nodes Only):
    - Runs on all worker nodes (excludes master node)
    - Exposes node temperature via HTTP on port 8080
+   - Reads temperature via `vcgencmd` (if available) or falls back to sysfs
+   - Mounts `/sys/class/thermal` for sysfs temperature reading
+   - Mounts `/dev/vcio` and `/dev/vchiq` for VideoCore GPU access (vcgencmd)
    - Prometheus-compatible metrics endpoint
    - Lightweight HTTP service
    - One instance per worker node
+
+**Temperature Reading Methods:**
+- Primary: `vcgencmd measure_temp` (requires VideoCore device access)
+- Fallback: `/sys/class/thermal/thermal_zone0/temp` (always available)
+- Both methods work in containers with proper device mounts
 
 3. Services:
    - Temperature Exporter Service (port 8080): Internal temperature API endpoint
