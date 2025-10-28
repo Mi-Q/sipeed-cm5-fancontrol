@@ -23,6 +23,7 @@ Usage examples:
 
 """
 import argparse
+import configparser
 import logging
 import os
 import re
@@ -31,7 +32,7 @@ import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 DEFAULT_PIN = 13
 DEFAULT_FREQ = 50
@@ -41,6 +42,52 @@ DEFAULT_MIN_TEMP = 45.0
 DEFAULT_MAX_TEMP = 60.0
 
 logger = logging.getLogger("sipeed-cm5-fancontrol")
+
+
+def load_config(config_path: str = "/etc/sipeed-fancontrol.conf") -> Dict[str, any]:
+    """Load configuration from file.
+
+    Args:
+        config_path: Path to configuration file
+
+    Returns:
+        Dict with configuration values
+    """
+    defaults = {
+        "mode": "auto",
+        "manual_speed": 50,
+        "temp_low": DEFAULT_MIN_TEMP,
+        "temp_high": DEFAULT_MAX_TEMP,
+        "fan_speed_low": DEFAULT_MIN_DUTY,
+        "fan_speed_high": 100.0,
+    }
+
+    if not os.path.exists(config_path):
+        logger.info("Config file not found, using defaults: mode=auto")
+        return defaults
+
+    try:
+        config = configparser.ConfigParser()
+        # Read as INI-style or simple key=value
+        with open(config_path) as f:
+            content = f.read()
+            # If it doesn't have sections, add a default one
+            if not content.strip().startswith("["):
+                content = "[DEFAULT]\n" + content
+            config.read_string(content)
+
+        section = config["DEFAULT"]
+        return {
+            "mode": section.get("MODE", "auto").lower(),
+            "manual_speed": float(section.get("MANUAL_SPEED", "50")),
+            "temp_low": float(section.get("TEMP_LOW", str(DEFAULT_MIN_TEMP))),
+            "temp_high": float(section.get("TEMP_HIGH", str(DEFAULT_MAX_TEMP))),
+            "fan_speed_low": float(section.get("FAN_SPEED_LOW", str(DEFAULT_MIN_DUTY))),
+            "fan_speed_high": float(section.get("FAN_SPEED_HIGH", "100")),
+        }
+    except Exception as e:
+        logger.warning("Error loading config file: %s, using defaults", e)
+        return defaults
 
 
 class DummyPWM:
@@ -327,6 +374,7 @@ class FanController:
         max_temp: float = DEFAULT_MAX_TEMP,
         min_duty: float = DEFAULT_MIN_DUTY,
         simulate_temp: Optional[float] = None,
+        config_path: Optional[str] = None,
     ):
         self.pin = pin
         self.freq = freq
@@ -343,6 +391,18 @@ class FanController:
         self.remote_method = "ssh"  # or 'http'
         self.remote_timeout = 5
         self.aggregate = "max"  # or 'avg'
+
+        # Load config file
+        self.config_path = config_path or "/etc/sipeed-fancontrol.conf"
+        self.config = load_config(self.config_path)
+        self.mode = self.config["mode"]
+        self.manual_speed = self.config["manual_speed"]
+
+        # Override temperature thresholds from config if in auto mode
+        if self.mode == "auto":
+            self.min_temp = self.config["temp_low"]
+            self.max_temp = self.config["temp_high"]
+            self.min_duty = self.config["fan_speed_low"]
 
         self.GPIO = import_gpio(dry_run=self.dry_run)
         # if real RPi.GPIO was imported, use its API, else DummyGPIO
@@ -396,6 +456,20 @@ class FanController:
             Optional[dict]: Dictionary with temperatures and duty cycle,
                 or None on failure
         """
+        # Check if mode is manual
+        if self.mode == "manual":
+            duty = self.manual_speed
+            # Apply manual duty cycle
+            if self.last_duty is None or abs(duty - self.last_duty) >= 1.0:
+                try:
+                    self.pwm.ChangeDutyCycle(duty)
+                    logger.info("Manual mode: duty %.1f%%", duty)
+                except AttributeError as e:
+                    logger.warning("Failed to set duty cycle: %s", e)
+            self.last_duty = duty
+            return {"mode": "manual", "duty": duty}
+
+        # Auto mode: read temperature and adjust fan speed
         local_t = read_cpu_temp(self.simulate_temp)
         if local_t is None:
             logger.error("Failed to read local CPU temperature")

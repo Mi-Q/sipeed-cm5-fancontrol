@@ -9,6 +9,25 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Parse command line arguments
+AUTO_REINSTALL=false
+for arg in "$@"; do
+    case $arg in
+        --reinstall|-r)
+            AUTO_REINSTALL=true
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  --reinstall, -r    Automatically reinstall if installation exists"
+            echo "  --help, -h         Show this help message"
+            exit 0
+            ;;
+    esac
+done
+
 # GitHub repository details
 GITHUB_REPO="Mi-Q/sipeed-cm5-fancontrol"
 GITHUB_BRANCH="${INSTALL_BRANCH:-main}"
@@ -40,7 +59,7 @@ if [ "$PIPED_INSTALL" = true ]; then
     echo "Downloading files from GitHub..."
     
     # Download required files
-    for file in fan_control.py temp_exporter.py sipeed-cm5-fancontrol.service sipeed-temp-exporter.service; do
+    for file in fan_control.py temp_exporter.py sipeed-cm5-fancontrol.service sipeed-temp-exporter.service fan_control.conf; do
         echo "  - Downloading $file..."
         curl -sSL "${GITHUB_RAW_URL}/${file}" -o "${SCRIPT_DIR}/${file}" || {
             echo -e "${RED}Failed to download $file${NC}"
@@ -51,6 +70,70 @@ if [ "$PIPED_INSTALL" = true ]; then
     echo ""
 else
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
+
+# Check for existing installation
+INSTALL_DIR="/opt/sipeed-fancontrol"
+EXISTING_SERVICES=()
+if [ -f "/etc/systemd/system/sipeed-cm5-fancontrol.service" ]; then
+    EXISTING_SERVICES+=("sipeed-cm5-fancontrol")
+fi
+if [ -f "/etc/systemd/system/sipeed-temp-exporter.service" ]; then
+    EXISTING_SERVICES+=("sipeed-temp-exporter")
+fi
+
+if [ ${#EXISTING_SERVICES[@]} -gt 0 ] || [ -d "$INSTALL_DIR" ]; then
+    echo -e "${YELLOW}Existing installation detected:${NC}"
+    echo ""
+    if [ ${#EXISTING_SERVICES[@]} -gt 0 ]; then
+        echo "Installed services:"
+        for service in "${EXISTING_SERVICES[@]}"; do
+            STATUS=$(systemctl is-active "$service.service" 2>/dev/null || echo "inactive")
+            echo "  - $service (status: $STATUS)"
+        done
+        echo ""
+    fi
+    if [ -d "$INSTALL_DIR" ]; then
+        echo "Installation directory: $INSTALL_DIR"
+        echo ""
+    fi
+    
+    if [ "$AUTO_REINSTALL" = true ]; then
+        INSTALL_OPTION=1
+        echo -e "${YELLOW}Auto-reinstall requested, proceeding...${NC}"
+    else
+        echo "Options:"
+        echo "  1) Reinstall/Update - Replace existing installation"
+        echo "  2) Reconfigure - Update service configuration only"
+        echo "  3) Cancel - Exit without changes"
+        echo ""
+        read -p "Choose option [1/2/3]: " INSTALL_OPTION
+    fi
+    
+    case $INSTALL_OPTION in
+        1)
+            echo ""
+            echo -e "${YELLOW}Proceeding with reinstall...${NC}"
+            # Stop existing services before reinstalling
+            for service in "${EXISTING_SERVICES[@]}"; do
+                if systemctl is-active --quiet "$service.service"; then
+                    echo "Stopping $service..."
+                    systemctl stop "$service.service"
+                fi
+            done
+            echo ""
+            ;;
+        2)
+            RECONFIGURE_ONLY=true
+            echo ""
+            echo -e "${YELLOW}Reconfiguring existing installation...${NC}"
+            echo ""
+            ;;
+        3|*)
+            echo "Installation cancelled."
+            exit 0
+            ;;
+    esac
 fi
 
 echo "This script will install the appropriate service for your node."
@@ -121,15 +204,30 @@ if [ "$NODE_TYPE" = "1" ]; then
 fi
 
 # Create installation directory
-INSTALL_DIR="/opt/sipeed-fancontrol"
 echo ""
 echo "Creating installation directory: $INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
 
-# Copy Python script
-echo "Copying $SCRIPT_FILE..."
-cp "$SCRIPT_DIR/$SCRIPT_FILE" "$INSTALL_DIR/"
-chmod +x "$INSTALL_DIR/$SCRIPT_FILE"
+# Copy Python script (skip if reconfigure only)
+if [ "$RECONFIGURE_ONLY" != true ]; then
+    echo "Copying $SCRIPT_FILE..."
+    cp "$SCRIPT_DIR/$SCRIPT_FILE" "$INSTALL_DIR/"
+    chmod +x "$INSTALL_DIR/$SCRIPT_FILE"
+    
+    # Copy config file for fan control node (only if it doesn't exist)
+    if [ "$NODE_TYPE" = "1" ]; then
+        if [ ! -f "/etc/sipeed-fancontrol.conf" ]; then
+            echo "Installing configuration file..."
+            cp "$SCRIPT_DIR/fan_control.conf" "/etc/sipeed-fancontrol.conf"
+            echo -e "${GREEN}✓ Config file installed at /etc/sipeed-fancontrol.conf${NC}"
+            echo -e "${BLUE}  Edit this file to switch between auto/manual mode${NC}"
+        else
+            echo "Config file already exists at /etc/sipeed-fancontrol.conf (keeping existing)"
+        fi
+    fi
+else
+    echo "Skipping file copy (reconfigure only)..."
+fi
 
 # Copy service file and modify if needed
 echo "Installing systemd service..."
@@ -141,8 +239,9 @@ else
     cp "$SCRIPT_DIR/$SERVICE_FILE" "/etc/systemd/system/$SERVICE_NAME.service"
 fi
 
-# Update WorkingDirectory in service file
+# Update WorkingDirectory and ExecStart paths in service file
 sed -i "s|WorkingDirectory=.*|WorkingDirectory=$INSTALL_DIR|g" "/etc/systemd/system/$SERVICE_NAME.service"
+sed -i "s|ExecStart=/usr/bin/python3 .*/\([^/]*\.py\)|ExecStart=/usr/bin/python3 $INSTALL_DIR/\1|g" "/etc/systemd/system/$SERVICE_NAME.service"
 
 # Reload systemd
 echo "Reloading systemd daemon..."
@@ -151,7 +250,14 @@ systemctl daemon-reload
 # Enable and start service
 echo "Enabling and starting $SERVICE_NAME service..."
 systemctl enable "$SERVICE_NAME.service"
-systemctl start "$SERVICE_NAME.service"
+
+# Restart if already running, otherwise start
+if systemctl is-active --quiet "$SERVICE_NAME.service"; then
+    echo "Restarting $SERVICE_NAME service..."
+    systemctl restart "$SERVICE_NAME.service"
+else
+    systemctl start "$SERVICE_NAME.service"
+fi
 
 # Check service status
 sleep 2

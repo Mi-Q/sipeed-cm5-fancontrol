@@ -36,11 +36,18 @@ Reboot after making this change for k3s to function properly.
 
 ## Features
 
-- PWM-based fan control with configurable temperature thresholds
-- Temperature polling from local and remote nodes
+- **Flexible fan control modes**:
+  - **Auto mode**: PWM-based fan control with configurable temperature thresholds
+  - **Manual mode**: Fixed fan speed percentage for custom setups
+- Configuration file (`/etc/sipeed-fancontrol.conf`) for easy mode switching
+- Temperature polling from local and remote nodes (HTTP or SSH)
+- Parallel peer temperature polling for fast aggregation
 - Prometheus-compatible metrics endpoint
+- Interactive installation with one-line curl support
+- Upgrade and uninstall scripts for easy maintenance
 - Multi-arch container support (amd64, arm64, arm/v7)
-- CI/CD pipeline with testing and automated builds
+- CI/CD pipeline with comprehensive testing (98% code coverage)
+- Pre-commit hooks for code quality (black, isort, flake8)
 
 ## Deployment Options
 
@@ -53,7 +60,15 @@ curl -sSL https://raw.githubusercontent.com/Mi-Q/sipeed-cm5-fancontrol/main/depl
 
 The interactive installer will guide you through setting up either:
 - **Fan Control Node** (Slot 1) - Controls the fan based on all node temperatures
+  - Supports auto mode (temperature-based) or manual mode (fixed speed)
+  - Configure via `/etc/sipeed-fancontrol.conf` after installation
 - **Temperature Provider Node** (Other Slots) - Exposes temperature via HTTP
+  - Provides temperature at `:8080/temp` and metrics at `:8080/metrics`
+
+**Upgrade existing installation:**
+```bash
+curl -sSL https://raw.githubusercontent.com/Mi-Q/sipeed-cm5-fancontrol/main/deploy-systemd/install.sh | sudo bash -s -- --reinstall
+```
 
 For detailed documentation, see [deploy-systemd/README.md](./deploy-systemd/README.md)
 
