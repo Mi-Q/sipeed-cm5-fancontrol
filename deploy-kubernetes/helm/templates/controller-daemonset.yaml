@@ -17,6 +17,8 @@ spec:
         app.kubernetes.io/name: sipeed-fan-controller
     spec:
       hostNetwork: false
+      nodeSelector:
+        node-role.kubernetes.io/master: "true"
       containers:
         - name: fan-controller
           image: "{{ .Values.controller.image.repository }}:{{ .Values.controller.image.tag }}"

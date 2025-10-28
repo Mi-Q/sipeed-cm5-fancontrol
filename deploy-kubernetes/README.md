@@ -27,6 +27,22 @@ This directory contains the Kubernetes (k3s) deployment configuration using Helm
 - k3s/Kubernetes cluster running on Sipeed CM5 nodes
 - Helm 3.x installed
 - `kubectl` configured to access your cluster
+- Master node labeled with `node-role.kubernetes.io/master=true`
+
+### Node Labeling
+
+Ensure your master node (Slot 1 with fan) is properly labeled:
+
+```bash
+# Check current labels
+kubectl get nodes --show-labels
+
+# Label the master node if needed
+kubectl label nodes <master-node-name> node-role.kubernetes.io/master=true
+
+# Verify the label
+kubectl get nodes -l node-role.kubernetes.io/master=true
+```
 
 ## Installation
 
@@ -83,20 +99,28 @@ args:
 ## Architecture
 
 The deployment consists of:
-1. Fan Controller DaemonSet:
-   - Runs on each node
+1. **Fan Controller DaemonSet** (Master Node Only):
+   - Runs exclusively on the master node (node-role.kubernetes.io/master=true)
    - Accesses GPIO for fan control
    - Polls temperatures from local and peer nodes
    - Provides HTTP status endpoint on port 8081
+   - Only one instance per cluster
 
-2. Temperature Exporter DaemonSet:
+2. **Temperature Exporter DaemonSet** (Worker Nodes Only):
+   - Runs on all worker nodes (excludes master node)
    - Exposes node temperature via HTTP on port 8080
    - Prometheus-compatible metrics endpoint
    - Lightweight HTTP service
+   - One instance per worker node
 
 3. Services:
    - Temperature Exporter Service (port 8080): Internal temperature API endpoint
    - Fan Controller Service (port 8081): Status and monitoring endpoint
+
+**Node Distribution:**
+- Master node (Slot 1): Fan controller with GPIO access
+- Worker nodes (Slots 2-7): Temperature exporters only
+- Anti-affinity ensures no scheduling conflicts
 
 ## Monitoring
 
