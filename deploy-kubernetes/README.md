@@ -57,6 +57,18 @@ kubectl get nodes -l node-role.kubernetes.io/master=true
    kubectl get pods -n [namespace]
    ```
 
+3. Test GPIO access (optional but recommended):
+   ```bash
+   # Check fan controller pod logs
+   kubectl logs -n [namespace] -l app.kubernetes.io/name=sipeed-fan-controller
+   
+   # Verify GPIO is accessible
+   kubectl exec -n [namespace] -it $(kubectl get pod -n [namespace] -l app.kubernetes.io/name=sipeed-fan-controller -o jsonpath='{.items[0].metadata.name}') -- ls -la /sys/class/gpio
+   
+   # Check if PWM is working (look for duty cycle changes in logs)
+   kubectl logs -n [namespace] -l app.kubernetes.io/name=sipeed-fan-controller -f
+   ```
+
 ## Configuration
 
 The deployment can be customized through the `helm/values.yaml` file:
@@ -101,10 +113,17 @@ args:
 The deployment consists of:
 1. **Fan Controller DaemonSet** (Master Node Only):
    - Runs exclusively on the master node (node-role.kubernetes.io/master=true)
-   - Accesses GPIO for fan control
+   - Accesses GPIO for fan control via `/sys` and `/dev` mounts
+   - Runs with `privileged: true` and `hostPID: true` for hardware access
    - Polls temperatures from local and peer nodes
    - Provides HTTP status endpoint on port 8081
    - Only one instance per cluster
+
+**Hardware Access Requirements:**
+- The fan controller pod runs in privileged mode to access GPIO
+- Host `/sys` and `/dev` directories are mounted into the container
+- `hostPID: true` ensures proper hardware device access
+- These settings allow the pod to control the PWM fan just like running on bare metal
 
 2. **Temperature Exporter DaemonSet** (Worker Nodes Only):
    - Runs on all worker nodes (excludes master node)
