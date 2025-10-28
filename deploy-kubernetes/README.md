@@ -49,6 +49,9 @@ The deployment can be customized through the `helm/values.yaml` file:
 - Image repository and tag
 - Resource limits and requests
 - Temperature polling configuration
+  - `--peers`: Comma-separated list of hostnames, IPs, or URLs (e.g., `node2,node3,192.168.1.104`)
+  - `--remote-method`: Polling method (`http` or `ssh`)
+  - Peers can be simple hostnames - full URLs are constructed automatically
 - Security context
 
 ### Temperature Exporter Settings
@@ -56,6 +59,26 @@ The deployment can be customized through the `helm/values.yaml` file:
 - Resource limits and requests
 - Service configuration
 - Port settings
+
+### Example Peer Configuration
+
+The `--peers` argument accepts flexible formats:
+```yaml
+# Simple hostnames (automatically expanded to http://hostname:8080/temp)
+args:
+  - --remote-method=http
+  - --peers=node2,node3,node4
+
+# Service names in Kubernetes
+args:
+  - --remote-method=http
+  - --peers=sipeed-temp-exporter
+
+# Full URLs (used as-is)
+args:
+  - --remote-method=http
+  - --peers=http://node2:8080/temp,http://node3:8080/temp
+```
 
 ## Architecture
 
