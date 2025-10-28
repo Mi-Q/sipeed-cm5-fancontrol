@@ -1,0 +1,21 @@
+[MAIN]
+# Minimum score for pylint to pass (default 10.0)
+fail-under=8.5
+
+[MESSAGES CONTROL]
+# Disable duplicate code check between these small utility files
+disable=
+    duplicate-code,
+    # RPi.GPIO import will fail on non-RPi systems, which is expected
+    import-error,
+    # Some patterns require more arguments/attributes for complete functionality
+    too-many-arguments,
+    too-many-positional-arguments,
+    too-many-instance-attributes,
+    # Consider-using-from-import conflicts with conditional imports
+    consider-using-from-import
+
+[DESIGN]
+# Allow more complexity for this embedded/hardware control application
+max-args=10
+max-attributes=20

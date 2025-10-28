@@ -1,0 +1,15 @@
+FROM python:3.11-slim
+
+LABEL org.opencontainers.image.source="https://github.com/Mi-Q/sipeed-cm5-fancontrol"
+LABEL org.opencontainers.image.description="Temperature exporter for Sipeed CM5 modules"
+LABEL org.opencontainers.image.licenses="MIT"
+
+WORKDIR /app
+
+COPY deploy-systemd/temp_exporter.py /app/temp_exporter.py
+
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8080
+
+CMD ["python3", "/app/temp_exporter.py", "--bind", "0.0.0.0", "--port", "8080"]

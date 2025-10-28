@@ -1,0 +1,12 @@
+1. Get the application status by running:
+  kubectl -n {{ .Release.Namespace }} get pods -l "app.kubernetes.io/name=sipeed-fan-controller"
+
+2. Check the temperature exporter service:
+  kubectl -n {{ .Release.Namespace }} get svc sipeed-temp-exporter
+
+3. Monitor logs from the fan controller:
+  kubectl -n {{ .Release.Namespace }} logs -l app.kubernetes.io/name=sipeed-fan-controller -f
+
+4. View the temperature metrics:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/sipeed-temp-exporter 8080:8080
+  curl http://localhost:8080/metrics

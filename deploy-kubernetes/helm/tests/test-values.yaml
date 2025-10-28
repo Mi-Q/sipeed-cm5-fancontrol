@@ -1,0 +1,41 @@
+suite: test fan controller
+templates:
+  - templates/controller-daemonset.yaml
+  - templates/exporter-daemonset.yaml
+  - templates/exporter-service.yaml
+tests:
+  - it: should create a DaemonSet for fan controller
+    asserts:
+      - isKind:
+          of: DaemonSet
+      - equal:
+          path: metadata.name
+          value: sipeed-fan-controller
+      - equal:
+          path: spec.template.spec.containers[0].name
+          value: fan-controller
+      - isNotEmpty:
+          path: spec.template.spec.containers[0].securityContext.privileged
+
+  - it: should create a DaemonSet for temp exporter
+    asserts:
+      - isKind:
+          of: DaemonSet
+      - equal:
+          path: metadata.name
+          value: sipeed-temp-exporter
+      - equal:
+          path: spec.template.spec.containers[0].name
+          value: temp-exporter
+
+  - it: should create a Service for temp exporter
+    template: templates/exporter-service.yaml
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: metadata.name
+          value: sipeed-temp-exporter
+      - equal:
+          path: spec.ports[0].port
+          value: 8080

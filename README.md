@@ -1,51 +1,114 @@
-# Sipeed CM5 Fan Controller
+# Sipeed CM5 Fan Control
 
-This project provides a small Python daemon to control the fan on a Sipeed CM5 module (Raspberry Pi) by mapping CPU temperature to PWM duty cycle.
+This project provides a fan controller for Sipeed CM5 modules, with support for both systemd service and Kubernetes (k3s) deployments.
 
-Key behavior:
-- Minimum fan duty is 25% by default (keeps idle temps ~35-45°C)
-- 100% fan duty when CPU reaches the configured `--max-temp` (default 60°C)
-- Linear interpolation between `--min-temp` (default 45°C) and `--max-temp` (default 60°C)
+## Hardware Platform
 
-Files:
-- `fan_control.py` — main script (has dry-run and simulate-temp options)
-- `sipeed-cm5-fancontrol.service` — example systemd unit (adjust the path before enabling)
-- `tests/test_mapping.py` and `run_tests.py` — basic unit tests for the mapping function
+This project was developed for the [Sipeed NanoCluster](https://classic.sipeed.com/nanocluster) ([Wiki](https://wiki.sipeed.com/nanocluster)) with 4 Raspberry Pi Compute Module 5 nodes, each equipped with:
+- 8GB RAM
+- 64GB eMMC storage
+- 512GB NVMe M.2 SSD
+- Raspberry Pi OS Lite 64-bit
 
-Quick usage
-------------
+Limited the project to 4 due to space between the components and airflow - up to 7 would be possible on the Sipeed NanoCluster Board in a minimal setup without additional NVMe M.2 SSD
 
-Dry-run (safe on non-RPi systems):
+For k3s cluster setup on the NanoCluster, refer to the [Sipeed k3s Installation Guide](https://wiki.sipeed.com/hardware/en/cluster/NanoCluster/k3s.html).
 
-```bash
-python3 fan_control.py --dry-run --simulate-temp 50
+### k3s on Raspberry Pi - Important Configuration
+
+Before installing k3s on Raspberry Pi, you must enable required cgroups by adding kernel parameters to `/boot/firmware/cmdline.txt` ([reference](https://forums.raspberrypi.com/viewtopic.php?t=365198)):
+
+```
+cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory
 ```
 
-Run on Raspberry Pi (use sudo or run as root):
-
-```bash
-sudo python3 fan_control.py
+Example configuration:
+```
+console=serial0,115200 console=tty1 root=PARTUUID=xxxxxxxx-02 rootfstype=ext4 fsck.repair=yes rootwait cfg80211.ieee80211_regdom=DE cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory
 ```
 
-Installing as a systemd service
--------------------------------
-1. Copy `sipeed-cm5-fancontrol.service` to `/etc/systemd/system/sipeed-cm5-fancontrol.service` and edit `ExecStart` to the absolute path of `fan_control.py`.
-2. Reload systemd and enable:
+Reboot after making this change for k3s to function properly.
 
+## Project Structure
+
+- `deploy-systemd/` - Systemd service implementation for direct installation on Raspberry Pi
+- `deploy-kubernetes/` - Kubernetes deployment using Helm charts for cluster environments
+
+## Features
+
+- PWM-based fan control with configurable temperature thresholds
+- Temperature polling from local and remote nodes
+- Prometheus-compatible metrics endpoint
+- Multi-arch container support (amd64, arm64, arm/v7)
+- CI/CD pipeline with testing and automated builds
+
+## Deployment Options
+
+### 1. Systemd Service (Direct on Raspberry Pi)
+
+**Quick Install (One-Line):**
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now sipeed-cm5-fancontrol.service
+curl -sSL https://raw.githubusercontent.com/Mi-Q/sipeed-cm5-fancontrol/main/deploy-systemd/install.sh | sudo bash
 ```
 
-Testing
--------
-Run the included unit tests (uses unittest):
+The interactive installer will guide you through setting up either:
+- **Fan Control Node** (Slot 1) - Controls the fan based on all node temperatures
+- **Temperature Provider Node** (Other Slots) - Exposes temperature via HTTP
 
+For detailed documentation, see [deploy-systemd/README.md](./deploy-systemd/README.md)
+
+### 2. Kubernetes Deployment (k3s)
+
+See [deploy-kubernetes/README.md](./deploy-kubernetes/README.md) for:
+- Helm chart installation
+- Configuration options
+- Architecture details
+- Security considerations
+
+## Development
+
+### Versioning
+
+This project follows [Semantic Versioning](https://semver.org/):
+- **MAJOR** version for incompatible API changes
+- **MINOR** version for backwards-compatible functionality additions
+- **PATCH** version for backwards-compatible bug fixes
+
+See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
+
+### Prerequisites
+- Python 3.11+
+- pytest for running tests
+- For k3s: Helm 3.x, kubectl
+- For containers: Docker with buildx
+
+### Testing & Linting
+The project uses:
+- pytest for unit testing
+- flake8 for style checking
+- pylint for code analysis
+- black for code formatting
+- isort for import sorting
+
+Run the test suite:
 ```bash
-python3 run_tests.py
+python -m pytest tests/
 ```
 
-Notes
------
-- The script prefers `/usr/bin/vcgencmd measure_temp` when available and falls back to `/sys/class/thermal/thermal_zone0/temp`.
-- Tweak `--min-temp`, `--max-temp`, and `--min-duty` to match your thermal profile.
+### CI/CD
+GitHub Actions workflow handles:
+- Code linting and testing
+- Multi-arch container builds
+- Container publishing to GitHub Container Registry
+
+## Author
+
+**Michael Kuppinger (Mi-Q)**
+- Email: michael@kuppinger.eu
+- LinkedIn: [mkuppinger](https://www.linkedin.com/in/mkuppinger/)
+- GitHub: [@Mi-Q](https://github.com/Mi-Q)
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
