@@ -3,9 +3,9 @@
 CLI tool to query Sipeed CM5 fan controller status.
 
 Usage:
-    fanctl                    # Query localhost
-    fanctl <host>             # Query specific host
-    fanctl --json             # Output raw JSON
+    cm5fan                    # Query localhost
+    cm5fan <host>             # Query specific host
+    cm5fan --json             # Output raw JSON
 """
 
 import argparse

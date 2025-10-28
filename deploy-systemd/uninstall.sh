@@ -117,10 +117,10 @@ if [ -f "/etc/sipeed-fancontrol.conf" ]; then
     esac
 fi
 
-# Remove fanctl CLI tool
-if [ -f "/usr/local/bin/fanctl" ]; then
-    rm -f "/usr/local/bin/fanctl"
-    echo -e "${GREEN}✓ Removed /usr/local/bin/fanctl${NC}"
+# Remove cm5fan CLI tool
+if [ -f "/usr/local/bin/cm5fan" ]; then
+    rm -f "/usr/local/bin/cm5fan"
+    echo -e "${GREEN}✓ Removed /usr/local/bin/cm5fan${NC}"
 fi
 
 echo ""

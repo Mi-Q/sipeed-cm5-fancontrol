@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Real-time monitoring and status features**
   - HTTP status endpoint at `:8081/status` showing all temperatures and fan state
-  - CLI tool `fanctl` for querying fan controller status from command line
+  - CLI tool `cm5fan` for querying fan controller status from command line
   - Enhanced logging showing individual node temperatures before aggregation
   - Status includes: mode, temperatures per node, aggregate temp, fan duty, configuration
 - Comprehensive test suite with 94 unit tests achieving 98% code coverage

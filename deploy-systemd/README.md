@@ -20,7 +20,7 @@ The Sipeed NanoCluster has 7 slots with one fan connected to **Slot 1**. The fan
 ## Files
 - `fan_control.py` - Main fan controller script with manual/auto mode support
 - `fan_control.conf` - Configuration file for fan control modes and thresholds
-- `fanctl` - CLI tool to query fan controller status and temperatures
+- `cli/cm5fan` - CLI tool to query fan controller status and temperatures
 - `temp_exporter.py` - Temperature exporter HTTP service
 - `sipeed-cm5-fancontrol.service` - Systemd service for fan controller
 - `sipeed-temp-exporter.service` - Systemd service for temperature exporter
@@ -132,20 +132,20 @@ If you prefer manual installation, clone the repository first and then:
 
 The fan controller exposes an HTTP status endpoint for monitoring:
 
-**Using the fanctl CLI tool:**
+**Using the cm5fan CLI tool:**
 ```bash
 # Query local fan controller
-fanctl
+cm5fan
 
 # Query remote fan controller
-fanctl node1
-fanctl 192.168.1.101
+cm5fan node1
+cm5fan 192.168.1.101
 
 # Get JSON output
-fanctl --json
+cm5fan --json
 
 # Specify custom port
-fanctl --port 8081 node1
+cm5fan --port 8081 node1
 ```
 
 **Using curl:**
