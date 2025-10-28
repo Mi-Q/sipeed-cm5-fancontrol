@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Real-time monitoring and status features**
+  - HTTP status endpoint at `:8081/status` showing all temperatures and fan state
+  - CLI tool `fanctl` for querying fan controller status from command line
+  - Enhanced logging showing individual node temperatures before aggregation
+  - Status includes: mode, temperatures per node, aggregate temp, fan duty, configuration
 - Comprehensive test suite with 94 unit tests achieving 98% code coverage
   - 95% coverage for fan_control.py
   - 99% coverage for temp_exporter.py
@@ -22,9 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Detects existing installations and offers reinstall/reconfigure/cancel options
   - Safely stops services before reinstalling to prevent conflicts
   - Preserves existing configuration files during updates
+  - Installs `fanctl` CLI tool to `/usr/local/bin/`
 - Uninstallation script (`uninstall.sh`) with safe cleanup
   - Detects and stops all installed services
   - Optionally removes configuration files with user confirmation
+  - Removes CLI tool
   - Cleans up installation directory
 - Installation directory standardized to `/opt/sipeed-fancontrol`
   - Service files properly reference installation path

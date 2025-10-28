@@ -39,6 +39,10 @@ Reboot after making this change for k3s to function properly.
 - **Flexible fan control modes**:
   - **Auto mode**: PWM-based fan control with configurable temperature thresholds
   - **Manual mode**: Fixed fan speed percentage for custom setups
+- **Real-time monitoring**:
+  - HTTP status endpoint showing all node temperatures
+  - CLI tool (`fanctl`) for quick status checks
+  - Enhanced logging with individual temperature readings
 - Configuration file (`/etc/sipeed-fancontrol.conf`) for easy mode switching
 - Temperature polling from local and remote nodes (HTTP or SSH)
 - Parallel peer temperature polling for fast aggregation

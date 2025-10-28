@@ -117,6 +117,12 @@ if [ -f "/etc/sipeed-fancontrol.conf" ]; then
     esac
 fi
 
+# Remove fanctl CLI tool
+if [ -f "/usr/local/bin/fanctl" ]; then
+    rm -f "/usr/local/bin/fanctl"
+    echo -e "${GREEN}✓ Removed /usr/local/bin/fanctl${NC}"
+fi
+
 echo ""
 echo -e "${GREEN}✓ Uninstallation complete!${NC}"
 echo ""

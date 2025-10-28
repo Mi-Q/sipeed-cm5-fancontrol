@@ -59,7 +59,7 @@ if [ "$PIPED_INSTALL" = true ]; then
     echo "Downloading files from GitHub..."
     
     # Download required files
-    for file in fan_control.py temp_exporter.py sipeed-cm5-fancontrol.service sipeed-temp-exporter.service fan_control.conf; do
+    for file in fan_control.py temp_exporter.py sipeed-cm5-fancontrol.service sipeed-temp-exporter.service fan_control.conf fanctl; do
         echo "  - Downloading $file..."
         curl -sSL "${GITHUB_RAW_URL}/${file}" -o "${SCRIPT_DIR}/${file}" || {
             echo -e "${RED}Failed to download $file${NC}"
@@ -213,6 +213,13 @@ if [ "$RECONFIGURE_ONLY" != true ]; then
     echo "Copying $SCRIPT_FILE..."
     cp "$SCRIPT_DIR/$SCRIPT_FILE" "$INSTALL_DIR/"
     chmod +x "$INSTALL_DIR/$SCRIPT_FILE"
+    
+    # Copy CLI tool for fan control node
+    if [ "$NODE_TYPE" = "1" ]; then
+        echo "Installing fanctl CLI tool..."
+        cp "$SCRIPT_DIR/fanctl" "/usr/local/bin/fanctl"
+        chmod +x "/usr/local/bin/fanctl"
+    fi
     
     # Copy config file for fan control node (only if it doesn't exist)
     if [ "$NODE_TYPE" = "1" ]; then

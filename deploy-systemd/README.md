@@ -20,6 +20,7 @@ The Sipeed NanoCluster has 7 slots with one fan connected to **Slot 1**. The fan
 ## Files
 - `fan_control.py` - Main fan controller script with manual/auto mode support
 - `fan_control.conf` - Configuration file for fan control modes and thresholds
+- `fanctl` - CLI tool to query fan controller status and temperatures
 - `temp_exporter.py` - Temperature exporter HTTP service
 - `sipeed-cm5-fancontrol.service` - Systemd service for fan controller
 - `sipeed-temp-exporter.service` - Systemd service for temperature exporter
@@ -127,6 +128,59 @@ If you prefer manual installation, clone the repository first and then:
 
 ## Configuration
 
+### Monitoring Status
+
+The fan controller exposes an HTTP status endpoint for monitoring:
+
+**Using the fanctl CLI tool:**
+```bash
+# Query local fan controller
+fanctl
+
+# Query remote fan controller
+fanctl node1
+fanctl 192.168.1.101
+
+# Get JSON output
+fanctl --json
+
+# Specify custom port
+fanctl --port 8081 node1
+```
+
+**Using curl:**
+```bash
+# Get status from fan control node
+curl http://localhost:8081/status
+
+# From another machine
+curl http://node1:8081/status
+```
+
+**Example output:**
+```json
+{
+  "mode": "auto",
+  "running": true,
+  "fan_duty_percent": 65.0,
+  "temperatures": {
+    "local": 48.5,
+    "node2": 52.3,
+    "node3": 49.1,
+    "node4": 51.8
+  },
+  "aggregate_method": "max",
+  "aggregate_temp_celsius": 52.3,
+  "config": {
+    "min_temp": 40.0,
+    "max_temp": 70.0,
+    "min_duty": 30.0
+  },
+  "peers": ["node2", "node3", "node4"],
+  "remote_method": "http"
+}
+```
+
 ### Fan Control Modes
 
 The fan controller supports two modes via `/etc/sipeed-fancontrol.conf`:
@@ -201,8 +255,22 @@ python3 -m pytest tests/
 
 View service logs using:
 ```bash
-sudo journalctl -u sipeed-cm5-fancontrol.service
-sudo journalctl -u sipeed-temp-exporter.service
+# Fan control service
+sudo journalctl -u sipeed-cm5-fancontrol.service -f
+
+# Temperature exporter service
+sudo journalctl -u sipeed-temp-exporter.service -f
+```
+
+**Fan control log output includes:**
+- Individual temperatures from all nodes
+- Aggregation method and result
+- Fan duty cycle changes
+
+Example log entries:
+```
+INFO Temperatures: local=48.5°C, node2=52.3°C, node3=49.1°C, node4=51.8°C
+INFO Aggregate temp (method=max): 52.3°C -> duty 65.0%
 ```
 
 ## License

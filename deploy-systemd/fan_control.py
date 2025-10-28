@@ -24,14 +24,17 @@ Usage examples:
 """
 import argparse
 import configparser
+import json
 import logging
 import os
 import re
 import signal
 import subprocess
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Dict, List, Optional
 
 DEFAULT_PIN = 13
@@ -88,6 +91,52 @@ def load_config(config_path: str = "/etc/sipeed-fancontrol.conf") -> Dict[str, a
     except Exception as e:
         logger.warning("Error loading config file: %s, using defaults", e)
         return defaults
+
+
+class StatusHTTPHandler(BaseHTTPRequestHandler):
+    """HTTP request handler for status endpoint."""
+
+    def log_message(self, format, *args):
+        """Suppress default HTTP logging."""
+        pass
+
+    def do_GET(self):
+        """Handle GET requests."""
+        if self.path == "/status" or self.path == "/":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            # Get status from server's fan_controller reference
+            status = self.server.fan_controller.get_status()
+            self.wfile.write(json.dumps(status, indent=2).encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+
+class StatusServer:
+    """HTTP server for exposing fan controller status."""
+
+    def __init__(self, fan_controller, port: int = 8081, bind: str = "0.0.0.0"):
+        self.fan_controller = fan_controller
+        self.port = port
+        self.bind = bind
+        self.server = None
+        self.thread = None
+
+    def start(self):
+        """Start the HTTP server in a background thread."""
+        self.server = HTTPServer((self.bind, self.port), StatusHTTPHandler)
+        self.server.fan_controller = self.fan_controller
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        logger.info("Status server started on %s:%d", self.bind, self.port)
+
+    def stop(self):
+        """Stop the HTTP server."""
+        if self.server:
+            self.server.shutdown()
+            logger.info("Status server stopped")
 
 
 class DummyPWM:
@@ -404,6 +453,11 @@ class FanController:
             self.max_temp = self.config["temp_high"]
             self.min_duty = self.config["fan_speed_low"]
 
+        # Status tracking
+        self.last_temps = {}
+        self.last_aggregate_temp = None
+        self.last_result = None
+
         self.GPIO = import_gpio(dry_run=self.dry_run)
         # if real RPi.GPIO was imported, use its API, else DummyGPIO
         try:
@@ -449,6 +503,30 @@ class FanController:
         self._running = False
         logger.info("Fan controller stopped")
 
+    def get_status(self) -> dict:
+        """Get current status of fan controller.
+
+        Returns:
+            dict: Status information including temperatures and duty cycle
+        """
+        status = {
+            "mode": self.mode,
+            "running": self._running,
+            "fan_duty_percent": self.last_duty,
+            "temperatures": self.last_temps,
+            "aggregate_method": self.aggregate,
+            "aggregate_temp_celsius": self.last_aggregate_temp,
+            "config": {
+                "min_temp": self.min_temp,
+                "max_temp": self.max_temp,
+                "min_duty": self.min_duty,
+                "manual_speed": self.manual_speed if self.mode == "manual" else None,
+            },
+            "peers": self.peers,
+            "remote_method": self.remote_method,
+        }
+        return status
+
     def run_once(self) -> Optional[dict]:
         """Execute one iteration of temperature check and fan control.
 
@@ -467,6 +545,8 @@ class FanController:
                 except AttributeError as e:
                     logger.warning("Failed to set duty cycle: %s", e)
             self.last_duty = duty
+            self.last_temps = {}
+            self.last_aggregate_temp = None
             return {"mode": "manual", "duty": duty}
 
         # Auto mode: read temperature and adjust fan speed
@@ -501,6 +581,16 @@ class FanController:
                     except (OSError, ValueError, subprocess.SubprocessError) as e:
                         logger.debug("Error polling %s: %s", peer, e)
 
+        # Store temperatures for status endpoint
+        self.last_temps = temps
+
+        # Log all individual temperatures
+        temp_strs = [
+            f"{host}={temp:.1f}°C" if temp else f"{host}=N/A"
+            for host, temp in temps.items()
+        ]
+        logger.info("Temperatures: %s", ", ".join(temp_strs))
+
         # compute aggregate temperature used to decide fan speed
         valid_temps = [v for v in temps.values() if v is not None]
         if not valid_temps:
@@ -512,6 +602,8 @@ class FanController:
         else:
             t = sum(valid_temps) / len(valid_temps)
 
+        self.last_aggregate_temp = t
+
         duty = temp_to_duty(t, self.min_temp, self.max_temp, self.min_duty)
         # clamp
         duty = max(self.min_duty, min(100.0, duty))
@@ -520,11 +612,17 @@ class FanController:
             try:
                 # real PWM ChangeDutyCycle or Dummy implementation
                 self.pwm.ChangeDutyCycle(duty)
-                logger.info("Temp %.2f°C -> duty %.1f%%", t, duty)
+                logger.info(
+                    "Aggregate temp (method=%s): %.1f°C -> duty %.1f%%",
+                    self.aggregate,
+                    t,
+                    duty,
+                )
             except AttributeError as e:
                 logger.warning("Failed to set duty cycle: %s", e)
         self.last_duty = duty
         result = {"aggregated_temp": t, "duty": duty, "per_host": temps}
+        self.last_result = result
         return result
 
     def run_loop(self):
@@ -611,6 +709,18 @@ def parse_args():
     p.add_argument(
         "--remote-timeout", type=int, default=5, help="Timeout seconds for remote polls"
     )
+    p.add_argument(
+        "--status-port",
+        type=int,
+        default=8081,
+        help="HTTP port for status endpoint (0 to disable)",
+    )
+    p.add_argument(
+        "--status-bind",
+        type=str,
+        default="0.0.0.0",
+        help="Bind address for status HTTP server",
+    )
     return p.parse_args()
 
 
@@ -638,7 +748,20 @@ def main():
     controller.remote_method = args.remote_method
     controller.aggregate = args.aggregate
     controller.remote_timeout = args.remote_timeout
-    controller.run_loop()
+
+    # Start status HTTP server if enabled
+    status_server = None
+    if args.status_port > 0:
+        status_server = StatusServer(
+            controller, port=args.status_port, bind=args.status_bind
+        )
+        status_server.start()
+
+    try:
+        controller.run_loop()
+    finally:
+        if status_server:
+            status_server.stop()
 
 
 if __name__ == "__main__":
