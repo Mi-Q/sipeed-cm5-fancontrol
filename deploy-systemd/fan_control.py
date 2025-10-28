@@ -360,15 +360,25 @@ def read_remote_temp_http(url: str, timeout: int = 5) -> Optional[float]:
     """Read temperature via HTTP endpoint that returns a plain number (C).
 
     Minimal implementation using curl to avoid new Python dependencies.
-    URL must be reachable.
+    Automatically constructs full URL if only hostname/IP is provided.
 
     Args:
-        url: HTTP endpoint URL
+        url: HTTP endpoint URL or hostname (e.g., 'http://node2:8080/temp' or 'node2')
         timeout: Request timeout in seconds
 
     Returns:
         Optional[float]: Temperature in Celsius or None if request fails
     """
+    # Construct full URL if only hostname provided
+    if not url.startswith("http://") and not url.startswith("https://"):
+        url = f"http://{url}:8080/temp"
+    elif ":" not in url.split("://", 1)[1]:
+        # Has http:// but no port, add default port and path
+        url = f"{url}:8080/temp"
+    elif not url.endswith("/temp") and not url.endswith("/metrics"):
+        # Has host:port but no path
+        url = f"{url}/temp"
+
     try:
         out = subprocess.check_output(
             ["curl", "-s", "--max-time", str(timeout), url],
