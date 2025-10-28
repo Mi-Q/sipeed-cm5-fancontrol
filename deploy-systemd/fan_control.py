@@ -146,7 +146,9 @@ def import_gpio(dry_run: bool):
     if dry_run:
         return DummyGPIO()
     try:
-        from RPi import GPIO
+        # Import the GPIO module using the module-level name to match common usage
+        # and avoid namespace issues (returns module object as GPIO)
+        import RPi.GPIO as GPIO
 
         return GPIO
     except ImportError:
@@ -565,4 +567,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-# Test comment to trigger hook

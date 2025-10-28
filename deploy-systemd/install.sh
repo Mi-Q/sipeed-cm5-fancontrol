@@ -170,8 +170,8 @@ if systemctl is-active --quiet "$SERVICE_NAME.service"; then
     
     if [ "$NODE_TYPE" = "2" ]; then
         echo ""
-        echo -e "${GREEN}Temperature endpoint available at: http://$(hostname -I | awk '{print $1}'):8000/temp${NC}"
-        echo -e "${GREEN}Metrics endpoint available at: http://$(hostname -I | awk '{print $1}'):8000/metrics${NC}"
+    echo -e "${GREEN}Temperature endpoint available at: http://$(hostname -I | awk '{print $1}'):8080/temp${NC}"
+    echo -e "${GREEN}Metrics endpoint available at: http://$(hostname -I | awk '{print $1}'):8080/metrics${NC}"
     fi
 else
     echo ""
