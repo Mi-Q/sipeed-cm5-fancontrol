@@ -379,10 +379,12 @@ class FanController:
         try:
             self.pwm.stop()
         except AttributeError:
+            # Some GPIO backends may not implement 'stop'; safe to ignore.
             pass
         try:
             self.GPIO.cleanup()
         except AttributeError:
+            # Some GPIO backends may not implement 'cleanup'; safe to ignore.
             pass
         self._running = False
         logger.info("Fan controller stopped")

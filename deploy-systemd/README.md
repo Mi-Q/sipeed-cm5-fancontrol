@@ -13,8 +13,8 @@ The Sipeed NanoCluster has 7 slots with one fan connected to **Slot 1**. The fan
   - **Only install `sipeed-cm5-fancontrol.service` on this node**
   
 - **Other Slots (Temperature Provider Nodes)**: Run `temp_exporter.py` to expose temperature via HTTP
-  - Provides local temperature on HTTP endpoint `:8000/temp`
-  - Provides Prometheus metrics on `:8000/metrics`
+  - Provides local temperature on HTTP endpoint `:8080/temp`
+  - Provides Prometheus metrics on `:8080/metrics`
   - **Only install `sipeed-temp-exporter.service` on these nodes**
 
 ## Files
@@ -57,7 +57,7 @@ sudo ./install.sh
 ---
 
 The installation script will:
-1. Ask if this is a **Fan Control Node** (Slot 1) or **Temperature Provider Node** (Slots 2-4)
+1. Ask if this is a **Fan Control Node** (Slot 1) or **Temperature Provider Node** (Slots 2-7)
 2. For Fan Control Node: prompt for peer node addresses and polling method (HTTP/SSH)
 3. Install the appropriate service to `/opt/sipeed-fancontrol/`
 4. Configure and start the systemd service automatically
