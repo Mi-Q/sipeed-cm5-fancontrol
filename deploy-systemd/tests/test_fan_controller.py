@@ -216,6 +216,7 @@ class TestFanController(unittest.TestCase):
         try:
             controller.run_loop()
         except KeyboardInterrupt:
+            # Expected interruption to stop the run loop
             pass
 
         # Verify signal handlers were registered
@@ -248,6 +249,7 @@ class TestFanController(unittest.TestCase):
                 try:
                     controller.run_loop()
                 except KeyboardInterrupt:
+                    # Expected interruption to stop the run loop
                     pass
 
                 # Should log exception
@@ -322,6 +324,7 @@ class TestFanController(unittest.TestCase):
         try:
             controller.run_loop()
         except KeyboardInterrupt:
+            # Expected interruption to stop the run loop
             pass
 
         # Get the SIGTERM handler
