@@ -1,6 +1,6 @@
-# CM5 Fan Controller
+# Sipeed CM5 Fan Controller
 
-This project provides a small Python daemon to control a CM5 fan on Raspberry Pi by mapping CPU temperature to PWM duty cycle.
+This project provides a small Python daemon to control the fan on a Sipeed CM5 module (Raspberry Pi) by mapping CPU temperature to PWM duty cycle.
 
 Key behavior:
 - Minimum fan duty is 25% by default (keeps idle temps ~35-45°C)
@@ -9,7 +9,7 @@ Key behavior:
 
 Files:
 - `fan_control.py` — main script (has dry-run and simulate-temp options)
-- `cm5fan.service` — example systemd unit (adjust the path before enabling)
+- `sipeed-cm5-fancontrol.service` — example systemd unit (adjust the path before enabling)
 - `tests/test_mapping.py` and `run_tests.py` — basic unit tests for the mapping function
 
 Quick usage
@@ -29,12 +29,12 @@ sudo python3 fan_control.py
 
 Installing as a systemd service
 -------------------------------
-1. Copy `cm5fan.service` to `/etc/systemd/system/cm5fan.service` and edit `ExecStart` to the absolute path of `fan_control.py`.
+1. Copy `sipeed-cm5-fancontrol.service` to `/etc/systemd/system/sipeed-cm5-fancontrol.service` and edit `ExecStart` to the absolute path of `fan_control.py`.
 2. Reload systemd and enable:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now cm5fan.service
+sudo systemctl enable --now sipeed-cm5-fancontrol.service
 ```
 
 Testing

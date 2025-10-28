@@ -33,7 +33,7 @@ DEFAULT_MIN_DUTY = 25.0
 DEFAULT_MIN_TEMP = 45.0
 DEFAULT_MAX_TEMP = 60.0
 
-logger = logging.getLogger("cm5fan")
+logger = logging.getLogger("sipeed-cm5-fancontrol")
 
 
 class DummyPWM:
@@ -223,7 +223,7 @@ class FanController:
 
 
 def parse_args():
-    p = argparse.ArgumentParser(description="CM5 fan controller for Raspberry Pi")
+    p = argparse.ArgumentParser(description="Sipeed CM5 fan controller for Raspberry Pi")
     p.add_argument("--pin", type=int, default=DEFAULT_PIN, help="GPIO pin (BCM) to use")
     p.add_argument("--freq", type=int, default=DEFAULT_FREQ, help="PWM frequency")
     p.add_argument("--poll", type=int, default=DEFAULT_POLL_SECONDS, help="Poll interval seconds")

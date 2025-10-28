@@ -1,0 +1,18 @@
+[Unit]
+Description=Sipeed CM5 Fan Controller
+After=multi-user.target
+
+[Service]
+Type=simple
+# Run as root to allow GPIO access
+User=root
+ExecStart=/usr/bin/python3 /home/pi/cm5fancontrol/fan_control.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
+# NOTE: adjust ExecStart path to where you place this repository on your Pi,
+# e.g. /home/pi/dev/cm5fancontrol/fan_control.py. Run `systemctl daemon-reload`,
+# `systemctl enable cm5fan.service` and `systemctl start cm5fan.service` to enable.
