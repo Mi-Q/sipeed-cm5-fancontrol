@@ -16,6 +16,10 @@ controller:
   args:
     - --remote-method=http
     - --peers=http://127.0.0.1:8080
+    - --status-port=8081
+    - --status-bind=0.0.0.0
+  service:
+    port: 8081
   securityContext:
     privileged: true
 

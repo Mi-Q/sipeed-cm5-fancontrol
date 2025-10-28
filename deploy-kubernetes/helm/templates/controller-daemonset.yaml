@@ -23,6 +23,10 @@ spec:
           imagePullPolicy: {{ .Values.controller.image.pullPolicy }}
           command: ["python3", "/app/fan_control.py"]
           args: {{ toYaml .Values.controller.args | nindent 12 }}
+          ports:
+            - name: status
+              containerPort: 8081
+              protocol: TCP
           securityContext:
             {{- toYaml .Values.controller.securityContext | nindent 12 }}
           volumeMounts:

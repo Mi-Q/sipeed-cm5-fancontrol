@@ -9,6 +9,19 @@ This directory contains the Kubernetes (k3s) deployment configuration using Helm
 - `Dockerfile.exporter` - Temperature exporter container image
 - `install.sh` - Helper script to install the Helm chart
 
+## Features
+
+### Fan Controller
+- Automatic temperature-based fan speed control
+- Multi-node temperature aggregation
+- HTTP status endpoint at port 8081 for monitoring
+- Real-time status including all node temperatures, aggregate temp, and fan duty cycle
+
+### Temperature Exporter
+- Exposes node temperature via HTTP on port 8080
+- Prometheus-compatible metrics endpoint
+- Lightweight HTTP service
+
 ## Prerequisites
 
 - k3s/Kubernetes cluster running on Sipeed CM5 nodes
@@ -51,15 +64,38 @@ The deployment consists of:
    - Runs on each node
    - Accesses GPIO for fan control
    - Polls temperatures from local and peer nodes
+   - Provides HTTP status endpoint on port 8081
 
 2. Temperature Exporter DaemonSet:
-   - Exposes node temperature via HTTP
+   - Exposes node temperature via HTTP on port 8080
    - Prometheus-compatible metrics endpoint
    - Lightweight HTTP service
 
-3. Temperature Exporter Service:
-   - ClusterIP service for node discovery
-   - Internal temperature API endpoint
+3. Services:
+   - Temperature Exporter Service (port 8080): Internal temperature API endpoint
+   - Fan Controller Service (port 8081): Status and monitoring endpoint
+
+## Monitoring
+
+The fan controller exposes a status endpoint that provides real-time information:
+
+```bash
+# Query status from within the cluster
+curl http://sipeed-fan-controller:8081/status
+```
+
+Response includes:
+- Current fan control mode (manual/auto)
+- Individual node temperatures
+- Aggregate temperature
+- Current fan duty cycle
+- Controller configuration
+
+You can also query a specific controller pod:
+```bash
+kubectl port-forward -n [namespace] pod/sipeed-fan-controller-xxxxx 8081:8081
+curl http://localhost:8081/status
+```
 
 ## Security
 
