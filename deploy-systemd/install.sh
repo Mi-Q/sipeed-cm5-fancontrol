@@ -116,66 +116,69 @@ if [ ${#EXISTING_SERVICES[@]} -gt 0 ] || [ -d "$INSTALL_DIR" ]; then
             echo -e "${YELLOW}Proceeding with reinstall...${NC}"
             # Stop existing services before reinstalling and wait for cleanup
             for service in "${EXISTING_SERVICES[@]}"; do
-                if systemctl is-active --quiet "$service.service"; then
-                    echo "Stopping $service..."
-                    # Disable first to prevent automatic restarts
-                    systemctl disable "$service.service" 2>/dev/null || true
-                    systemctl stop "$service.service"
-                    
-                    # Determine which port to check
-                    if [ "$service" = "sipeed-cm5-fancontrol" ]; then
-                        PORT_TO_CHECK=8081
-                    elif [ "$service" = "sipeed-temp-exporter" ]; then
-                        PORT_TO_CHECK=8080
-                    else
-                        continue
-                    fi
-                    
-                    # Wait for service to stop and port to be released
-                    echo "Waiting for $service to stop completely and port $PORT_TO_CHECK to be released..."
-                    TIMEOUT=30
-                    ELAPSED=0
-                    SERVICE_INACTIVE=false
-                    PORT_FREE=false
-                    
-                    while (( ELAPSED < TIMEOUT )); do
-                        # Check if service is inactive
-                        if ! systemctl is-active --quiet "$service.service"; then
-                            SERVICE_INACTIVE=true
-                        fi
-                        
-                        # Check if port is free
-                        if ! ss -tlnH "sport = :$PORT_TO_CHECK" 2>/dev/null | grep -q ":$PORT_TO_CHECK"; then
-                            PORT_FREE=true
-                        fi
-                        
-                        # Exit loop if both conditions are met
-                        if [ "$SERVICE_INACTIVE" = true ] && [ "$PORT_FREE" = true ]; then
-                            echo "✓ $service stopped and port $PORT_TO_CHECK released (after ${ELAPSED}s)"
-                            break
-                        fi
-                        
-                        sleep 1
-                        ELAPSED=$((ELAPSED + 1))
-                    done
-                    
-                    # Report timeout errors
-                    if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
-                        if [ "$SERVICE_INACTIVE" != true ]; then
-                            echo -e "${RED}Error: Service $service still active after ${TIMEOUT}s${NC}"
-                            exit 1
-                        fi
-                        if [ "$PORT_FREE" != true ]; then
-                            echo -e "${RED}Error: Port $PORT_TO_CHECK still in use after ${TIMEOUT}s${NC}"
-                            echo "Port usage:"
-                            ss -tlnp | grep ":$PORT_TO_CHECK" || true
-                            exit 1
-                        fi
-                    fi
-                    
-                    # Reset failed state to prevent automatic restart attempts
-                    systemctl reset-failed "$service.service" 2>/dev/null || true
+                echo "Stopping $service..."
+                # Mask the service to completely prevent any start attempts
+                systemctl mask "$service.service" 2>/dev/null || true
+                # Kill any running processes forcefully
+                systemctl kill "$service.service" 2>/dev/null || true
+                systemctl stop "$service.service" 2>/dev/null || true
+                
+                # Determine which port to check
+                if [ "$service" = "sipeed-cm5-fancontrol" ]; then
+                    PORT_TO_CHECK=8081
+                elif [ "$service" = "sipeed-temp-exporter" ]; then
+                    PORT_TO_CHECK=8080
+                else
+                    continue
                 fi
+                
+                # Wait for service to stop and port to be released
+                echo "Waiting for $service to stop completely and port $PORT_TO_CHECK to be released..."
+                TIMEOUT=30
+                ELAPSED=0
+                SERVICE_INACTIVE=false
+                PORT_FREE=false
+                
+                while (( ELAPSED < TIMEOUT )); do
+                    # Check if service is inactive
+                    if ! systemctl is-active --quiet "$service.service"; then
+                        SERVICE_INACTIVE=true
+                    fi
+                    
+                    # Check if port is free
+                    if ! ss -tlnH "sport = :$PORT_TO_CHECK" 2>/dev/null | grep -q ":$PORT_TO_CHECK"; then
+                        PORT_FREE=true
+                    fi
+                    
+                    # Exit loop if both conditions are met
+                    if [ "$SERVICE_INACTIVE" = true ] && [ "$PORT_FREE" = true ]; then
+                        echo "✓ $service stopped and port $PORT_TO_CHECK released (after ${ELAPSED}s)"
+                        break
+                    fi
+                    
+                    sleep 1
+                    ELAPSED=$((ELAPSED + 1))
+                done
+                
+                # Report timeout errors
+                if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
+                    if [ "$SERVICE_INACTIVE" != true ]; then
+                        echo -e "${RED}Error: Service $service still active after ${TIMEOUT}s${NC}"
+                        # Show what's still running
+                        systemctl status "$service.service" --no-pager || true
+                        exit 1
+                    fi
+                    if [ "$PORT_FREE" != true ]; then
+                        echo -e "${RED}Error: Port $PORT_TO_CHECK still in use after ${TIMEOUT}s${NC}"
+                        echo "Port usage:"
+                        ss -tlnp | grep ":$PORT_TO_CHECK" || true
+                        exit 1
+                    fi
+                fi
+                
+                # Reset failed state and unmask for fresh installation
+                systemctl reset-failed "$service.service" 2>/dev/null || true
+                systemctl unmask "$service.service" 2>/dev/null || true
             done
             echo ""
             ;;
