@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Installation script (install.sh) improvements**
+  - Fixed "Address already in use" error during temperature exporter and fan control service reinstall
+  - Now properly stops service and waits for port to be released before restarting
+  - Ensures clean reinstallation without port conflicts
+- **Simplified installation process**
+  - Removed SSH polling option (HTTP-only for easier setup)
+  - Eliminates need for SSH key configuration
+  - One less manual step, better user experience
+
 ### Added
 - **Real-time monitoring and status features**
   - HTTP status endpoint at `:8081/status` showing all temperatures and fan state
