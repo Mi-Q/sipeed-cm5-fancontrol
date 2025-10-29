@@ -436,15 +436,9 @@ else
     echo "Skipping file copy (reconfigure only)..."
 fi
 
-# Copy service file and modify if needed
+# Copy service file
 echo "Installing systemd service..."
-if [ "$NODE_TYPE" = "1" ] && [ -n "$PEER_NODES" ]; then
-    # Modify service file with peer configuration
-    sed "s|ExecStart=.*|ExecStart=/usr/bin/python3 $INSTALL_DIR/$SCRIPT_FILE --peers $PEER_NODES --remote-method $REMOTE_METHOD_ARG|g" \
-        "$SCRIPT_DIR/$SERVICE_FILE" > "/etc/systemd/system/$SERVICE_NAME.service"
-else
-    cp "$SCRIPT_DIR/$SERVICE_FILE" "/etc/systemd/system/$SERVICE_NAME.service"
-fi
+cp "$SCRIPT_DIR/$SERVICE_FILE" "/etc/systemd/system/$SERVICE_NAME.service"
 
 # Update WorkingDirectory and ExecStart paths in service file
 sed -i "s|WorkingDirectory=.*|WorkingDirectory=$INSTALL_DIR|g" "/etc/systemd/system/$SERVICE_NAME.service"

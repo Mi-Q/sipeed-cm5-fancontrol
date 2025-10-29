@@ -959,10 +959,30 @@ def main():
         simulate_temp=args.simulate_temp,
     )
 
-    # Parse static peers from command line
+    # Parse static peers from command line or config file
     static_peers = []
     if args.peers:
         static_peers = [p.strip() for p in args.peers.split(",") if p.strip()]
+    else:
+        # If no --peers argument, try to load from config file
+        peers_config_file = "/etc/sipeed-cm5-fancontrol/peers.conf"
+        if os.path.exists(peers_config_file):
+            try:
+                with open(peers_config_file, "r") as f:
+                    peers_content = f.read().strip()
+                    if peers_content:
+                        static_peers = [
+                            p.strip() for p in peers_content.split(",") if p.strip()
+                        ]
+                        logger.info(
+                            "Loaded %d peers from %s",
+                            len(static_peers),
+                            peers_config_file,
+                        )
+            except Exception as e:
+                logger.warning(
+                    "Failed to read peers config file %s: %s", peers_config_file, e
+                )
 
     # Add Kubernetes discovery if enabled
     if args.k8s_discovery:
