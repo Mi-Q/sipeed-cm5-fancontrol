@@ -328,6 +328,7 @@ if [ "$NODE_TYPE" = "1" ]; then
     
     # Save peer configuration for future reinstalls
     if [ -n "$PEER_NODES" ]; then
+        mkdir -p "$CONFIG_DIR"
         echo "$PEER_NODES" > "$PEERS_CONFIG_FILE"
         echo -e "${BLUE}Peer configuration saved to $PEERS_CONFIG_FILE${NC}"
     fi
