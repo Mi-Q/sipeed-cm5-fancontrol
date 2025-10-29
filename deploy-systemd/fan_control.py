@@ -66,6 +66,8 @@ def load_config(config_path: str = "/etc/sipeed-fancontrol.conf") -> Dict[str, a
         "fan_curve": "exponential",
         "step_zones": "35:0,45:30,55:60,65:100",
         "step_hysteresis": 2.0,
+        "fan_min_operating_speed": 10.0,
+        "fan_stop_temp": 20.0,
     }
 
     if not os.path.exists(config_path):
@@ -93,6 +95,10 @@ def load_config(config_path: str = "/etc/sipeed-fancontrol.conf") -> Dict[str, a
             "fan_curve": section.get("FAN_CURVE", "exponential").lower(),
             "step_zones": section.get("STEP_ZONES", "35:0,45:30,55:60,65:100"),
             "step_hysteresis": float(section.get("STEP_HYSTERESIS", "2")),
+            "fan_min_operating_speed": float(
+                section.get("FAN_MIN_OPERATING_SPEED", "10")
+            ),
+            "fan_stop_temp": float(section.get("FAN_STOP_TEMP", "20")),
         }
     except Exception as e:
         logger.warning("Error loading config file: %s, using defaults", e)
@@ -498,6 +504,8 @@ class FanController:
         self.step_zones = []
         self.step_hysteresis = 0
         self.current_step_index = 0
+        self.fan_min_operating_speed = 10.0
+        self.fan_stop_temp = 20.0
 
         # Override temperature thresholds from config if in auto mode
         if self.mode == "auto":
@@ -506,6 +514,8 @@ class FanController:
             self.min_duty = self.config["fan_speed_low"]
             self.max_duty = self.config["fan_speed_high"]
             self.fan_curve = self.config["fan_curve"]
+            self.fan_min_operating_speed = self.config["fan_min_operating_speed"]
+            self.fan_stop_temp = self.config["fan_stop_temp"]
 
             # Parse step zones for step curve mode
             if self.fan_curve == "step":
@@ -609,6 +619,39 @@ class FanController:
             return float(self.step_zones[0][1])
 
         return float(self.step_zones[self.current_step_index][1])
+
+    def _apply_min_operating_speed(self, duty: float, temp_c: float) -> float:
+        """Apply minimum operating speed threshold to prevent dead zone.
+
+        Many fans don't spin below a certain PWM duty cycle (typically 10%).
+        This method ensures the fan either stays completely off or runs at
+        minimum operating speed or higher, avoiding the dead zone.
+
+        Args:
+            duty: Calculated duty cycle percentage (0-100)
+            temp_c: Current temperature in Celsius
+
+        Returns:
+            Adjusted duty cycle percentage (0-100)
+        """
+        # If duty is already at or above minimum operating speed, return as-is
+        if duty >= self.fan_min_operating_speed:
+            return duty
+
+        # If duty is 0 or temperature is at/below stop temp, keep fan off
+        if duty == 0 or temp_c <= self.fan_stop_temp:
+            return 0.0
+
+        # Duty is in dead zone (0 < duty < min_operating_speed) and temp > stop_temp
+        # Snap up to minimum operating speed
+        logger.debug(
+            "Duty %.1f%% in dead zone, snapping to minimum %.1f%% (temp=%.1f°C > stop_temp=%.1f°C)",
+            duty,
+            self.fan_min_operating_speed,
+            temp_c,
+            self.fan_stop_temp,
+        )
+        return self.fan_min_operating_speed
 
     def start(self):
         """Start the fan controller with initial duty cycle."""
@@ -756,6 +799,10 @@ class FanController:
 
         # clamp
         duty = max(self.min_duty, min(100.0, duty))
+
+        # Apply minimum operating speed threshold to avoid dead zone
+        duty = self._apply_min_operating_speed(duty, t)
+
         # apply small hysteresis: only change if >1% difference
         if self.last_duty is None or abs(duty - self.last_duty) >= 1.0:
             try:
