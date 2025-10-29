@@ -5,7 +5,7 @@ controller:
   image:
     repository: ghcr.io/mi-q/sipeed-cm5-fancontrol
     tag: latest
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   resources:
     limits:
       cpu: 100m
@@ -27,7 +27,7 @@ exporter:
   image:
     repository: ghcr.io/mi-q/sipeed-temp-exporter
     tag: latest
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   resources:
     limits:
       cpu: 100m
