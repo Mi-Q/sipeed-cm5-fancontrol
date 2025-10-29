@@ -77,7 +77,7 @@ sudo ./install.sh --reinstall
 The installation script will:
 1. Check for existing installations and offer to reinstall/reconfigure
 2. Ask if this is a **Fan Control Node** (Slot 1) or **Temperature Provider Node** (Slots 2-7)
-3. For Fan Control Node: prompt for peer node addresses and polling method (HTTP/SSH)
+3. For Fan Control Node: prompt for peer node addresses (uses HTTP polling automatically)
 4. Install files to `/opt/sipeed-fancontrol/`
 5. Install configuration file to `/etc/sipeed-fancontrol.conf` (fan control only)
 6. Configure and start the systemd service automatically
@@ -89,7 +89,7 @@ The installation script will:
 sudo ./install.sh
 # Select option 1 (Fan Control Node)
 # Enter peers: node2,node3,node4,node5,node6,node7  (hostname or use IPs: 192.168.1.102,192.168.1.103,...)
-# Select HTTP method (option 1)
+# HTTP polling is used automatically (port 8080)
 ```
 
 **On Other Slots (Temperature Provider Nodes):**

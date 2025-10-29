@@ -183,24 +183,10 @@ if [ "$NODE_TYPE" = "1" ]; then
     echo "  - Mixed: node2,192.168.1.103,node4,node5,node6,node7"
     read -p "Peer nodes: " PEER_NODES
     
+    # Always use HTTP method (SSH removed for simplicity)
+    REMOTE_METHOD_ARG="http"
     echo ""
-    echo "Select remote temperature polling method:"
-    echo "  1) HTTP (recommended - uses temp_exporter.py on peer nodes)"
-    echo "  2) SSH (requires SSH keys configured)"
-    read -p "Method [1/2]: " REMOTE_METHOD
-    
-    case $REMOTE_METHOD in
-        1)
-            REMOTE_METHOD_ARG="http"
-            ;;
-        2)
-            REMOTE_METHOD_ARG="ssh"
-            ;;
-        *)
-            echo -e "${YELLOW}Invalid option, defaulting to HTTP${NC}"
-            REMOTE_METHOD_ARG="http"
-            ;;
-    esac
+    echo -e "${BLUE}Using HTTP polling method (port 8080 on peer nodes)${NC}"
 fi
 
 # Create installation directory
@@ -254,17 +240,18 @@ sed -i "s|ExecStart=/usr/bin/python3 .*/\([^/]*\.py\)|ExecStart=/usr/bin/python3
 echo "Reloading systemd daemon..."
 systemctl daemon-reload
 
+# Stop service if running (ensures port is freed before restart)
+if systemctl is-active --quiet "$SERVICE_NAME.service"; then
+    echo "Stopping existing $SERVICE_NAME service..."
+    systemctl stop "$SERVICE_NAME.service"
+    # Wait for port to be released
+    sleep 2
+fi
+
 # Enable and start service
 echo "Enabling and starting $SERVICE_NAME service..."
 systemctl enable "$SERVICE_NAME.service"
-
-# Restart if already running, otherwise start
-if systemctl is-active --quiet "$SERVICE_NAME.service"; then
-    echo "Restarting $SERVICE_NAME service..."
-    systemctl restart "$SERVICE_NAME.service"
-else
-    systemctl start "$SERVICE_NAME.service"
-fi
+systemctl start "$SERVICE_NAME.service"
 
 # Check service status
 sleep 2
