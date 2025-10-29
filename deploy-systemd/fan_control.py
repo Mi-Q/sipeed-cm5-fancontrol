@@ -126,6 +126,8 @@ class StatusServer:
 
     def start(self):
         """Start the HTTP server in a background thread."""
+        # Enable SO_REUSEADDR to allow quick restart without waiting for TIME_WAIT
+        HTTPServer.allow_reuse_address = True
         self.server = HTTPServer((self.bind, self.port), StatusHTTPHandler)
         self.server.fan_controller = self.fan_controller
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
