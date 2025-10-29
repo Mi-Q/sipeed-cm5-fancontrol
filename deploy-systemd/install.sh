@@ -244,8 +244,30 @@ systemctl daemon-reload
 if systemctl is-active --quiet "$SERVICE_NAME.service"; then
     echo "Stopping existing $SERVICE_NAME service..."
     systemctl stop "$SERVICE_NAME.service"
-    # Wait for port to be released
-    sleep 2
+    
+    # Determine which port to check based on service type
+    if [ "$SERVICE_NAME" = "sipeed-cm5-fancontrol" ]; then
+        PORT_TO_CHECK=8081
+    elif [ "$SERVICE_NAME" = "sipeed-temp-exporter" ]; then
+        PORT_TO_CHECK=8080
+    fi
+    
+    # Wait for port to be released with timeout
+    echo "Waiting for port $PORT_TO_CHECK to be released..."
+    TIMEOUT=10
+    ELAPSED=0
+    while [ $ELAPSED -lt $TIMEOUT ]; do
+        if ! ss -tlnH "sport = :$PORT_TO_CHECK" 2>/dev/null | grep -q ":$PORT_TO_CHECK"; then
+            echo "Port $PORT_TO_CHECK is now available"
+            break
+        fi
+        sleep 0.5
+        ELAPSED=$((ELAPSED + 1))
+    done
+    
+    if [ $ELAPSED -ge $TIMEOUT ]; then
+        echo -e "${YELLOW}Warning: Port $PORT_TO_CHECK still in use after ${TIMEOUT}s, proceeding anyway${NC}"
+    fi
 fi
 
 # Enable and start service
