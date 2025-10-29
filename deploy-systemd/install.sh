@@ -301,15 +301,63 @@ if [ "$RECONFIGURE_ONLY" != true ]; then
         chmod +x "/usr/local/bin/cm5fan"
     fi
     
-    # Copy config file for fan control node (only if it doesn't exist)
+    # Handle config file for fan control node
     if [ "$NODE_TYPE" = "1" ]; then
         if [ ! -f "/etc/sipeed-fancontrol.conf" ]; then
+            # New installation - copy config file
             echo "Installing configuration file..."
             cp "$SCRIPT_DIR/fan_control.conf" "/etc/sipeed-fancontrol.conf"
             echo -e "${GREEN}✓ Config file installed at /etc/sipeed-fancontrol.conf${NC}"
-            echo -e "${BLUE}  Edit this file to switch between auto/manual mode${NC}"
+            echo -e "${BLUE}  Edit this file to switch between auto/manual mode or change fan curve${NC}"
         else
-            echo "Config file already exists at /etc/sipeed-fancontrol.conf (keeping existing)"
+            # Existing config - check for differences
+            if ! cmp -s "$SCRIPT_DIR/fan_control.conf" "/etc/sipeed-fancontrol.conf"; then
+                echo ""
+                echo -e "${YELLOW}Configuration file has changed in the new version!${NC}"
+                echo ""
+                echo "Current config: /etc/sipeed-fancontrol.conf"
+                echo "New config:     $SCRIPT_DIR/fan_control.conf"
+                echo ""
+                
+                # Offer to show diff
+                read -p "Show differences? [y/N]: " SHOW_DIFF
+                if [ "$SHOW_DIFF" = "y" ] || [ "$SHOW_DIFF" = "Y" ]; then
+                    echo ""
+                    echo "=== Configuration Differences ==="
+                    diff -u "/etc/sipeed-fancontrol.conf" "$SCRIPT_DIR/fan_control.conf" || true
+                    echo "================================="
+                    echo ""
+                fi
+                
+                echo "Options:"
+                echo "  1) Keep existing config (safe - no changes)"
+                echo "  2) Update to new config (applies new defaults)"
+                echo "  3) Backup existing and update (saves current as .backup)"
+                echo ""
+                read -p "Choose option [1/2/3]: " CONFIG_OPTION
+                
+                case $CONFIG_OPTION in
+                    2)
+                        echo "Updating configuration file..."
+                        cp "$SCRIPT_DIR/fan_control.conf" "/etc/sipeed-fancontrol.conf"
+                        echo -e "${GREEN}✓ Config file updated${NC}"
+                        ;;
+                    3)
+                        BACKUP_FILE="/etc/sipeed-fancontrol.conf.backup.$(date +%Y%m%d_%H%M%S)"
+                        echo "Backing up existing config to: $BACKUP_FILE"
+                        cp "/etc/sipeed-fancontrol.conf" "$BACKUP_FILE"
+                        cp "$SCRIPT_DIR/fan_control.conf" "/etc/sipeed-fancontrol.conf"
+                        echo -e "${GREEN}✓ Config backed up and updated${NC}"
+                        echo -e "${BLUE}  Previous config saved as: $BACKUP_FILE${NC}"
+                        ;;
+                    1|*)
+                        echo "Keeping existing configuration file"
+                        echo -e "${BLUE}  New config available at: $SCRIPT_DIR/fan_control.conf${NC}"
+                        ;;
+                esac
+            else
+                echo "Config file unchanged (keeping existing)"
+            fi
         fi
     fi
 else
