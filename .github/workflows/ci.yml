@@ -66,14 +66,55 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for change detection
+
+      - name: Check for relevant file changes
+        id: changes
+        run: |
+          # Get list of changed files in this push
+          if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            # First push to branch - build everything
+            echo "controller=true" >> $GITHUB_OUTPUT
+            echo "exporter=true" >> $GITHUB_OUTPUT
+            echo "Reason: First push to branch, building all images"
+          else
+            # Check which files changed
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+            echo "Changed files:"
+            echo "$CHANGED_FILES"
+            
+            # Controller image dependencies
+            CONTROLLER_PATHS="deploy-systemd/fan_control.py|deploy-kubernetes/k8s_discovery.py|deploy-kubernetes/Dockerfile"
+            if echo "$CHANGED_FILES" | grep -qE "$CONTROLLER_PATHS"; then
+              echo "controller=true" >> $GITHUB_OUTPUT
+              echo "✓ Controller image needs rebuild"
+            else
+              echo "controller=false" >> $GITHUB_OUTPUT
+              echo "✗ Controller image unchanged"
+            fi
+            
+            # Exporter image dependencies
+            EXPORTER_PATHS="deploy-systemd/temp_exporter.py|deploy-kubernetes/Dockerfile.exporter"
+            if echo "$CHANGED_FILES" | grep -qE "$EXPORTER_PATHS"; then
+              echo "exporter=true" >> $GITHUB_OUTPUT
+              echo "✓ Exporter image needs rebuild"
+            else
+              echo "exporter=false" >> $GITHUB_OUTPUT
+              echo "✗ Exporter image unchanged"
+            fi
+          fi
 
       - name: Set up QEMU
+        if: steps.changes.outputs.controller == 'true' || steps.changes.outputs.exporter == 'true'
         uses: docker/setup-qemu-action@v2
 
       - name: Set up Docker Buildx
+        if: steps.changes.outputs.controller == 'true' || steps.changes.outputs.exporter == 'true'
         uses: docker/setup-buildx-action@v2
 
       - name: Login to GitHub Container Registry
+        if: steps.changes.outputs.controller == 'true' || steps.changes.outputs.exporter == 'true'
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
@@ -100,6 +141,7 @@ jobs:
           fi
 
       - name: Build & push exporter image
+        if: steps.changes.outputs.exporter == 'true'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -113,6 +155,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build & push controller image
+        if: steps.changes.outputs.controller == 'true'
         uses: docker/build-push-action@v4
         with:
           context: .
