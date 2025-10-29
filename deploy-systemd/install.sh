@@ -156,6 +156,12 @@ if [ ${#EXISTING_SERVICES[@]} -gt 0 ] || [ -d "$INSTALL_DIR" ]; then
                         break
                     fi
                     
+                    # If port still in use after service is inactive, try killing the process
+                    if [ "$SERVICE_INACTIVE" = true ] && [ "$PORT_FREE" != true ] && [ "$ELAPSED" -gt 5 ]; then
+                        echo "Service inactive but port still in use, force-killing process..."
+                        fuser -k ${PORT_TO_CHECK}/tcp 2>/dev/null || true
+                    fi
+                    
                     sleep 1
                     ELAPSED=$((ELAPSED + 1))
                 done
@@ -179,13 +185,6 @@ if [ ${#EXISTING_SERVICES[@]} -gt 0 ] || [ -d "$INSTALL_DIR" ]; then
                 # Reset failed state and unmask for fresh installation
                 systemctl reset-failed "$service.service" 2>/dev/null || true
                 systemctl unmask "$service.service" 2>/dev/null || true
-                
-                # Extra safety: kill any lingering Python processes on this port
-                if [ "$PORT_FREE" != true ]; then
-                    echo "Force-killing processes using port $PORT_TO_CHECK..."
-                    fuser -k ${PORT_TO_CHECK}/tcp 2>/dev/null || true
-                    sleep 2
-                fi
             done
             echo ""
             ;;
