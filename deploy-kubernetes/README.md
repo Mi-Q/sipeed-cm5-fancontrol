@@ -318,13 +318,58 @@ The fan controller runs in privileged mode to access GPIO hardware. The temperat
 
 ## Customization
 
-To customize the deployment:
+### Configuration via ConfigMap
+
+The fan controller configuration is managed through a Kubernetes ConfigMap (no need for `/etc/sipeed-cm5-fancontrol/fancontrol.conf`).
+
+**Available settings in `values.yaml`:**
+
+```yaml
+controller:
+  config:
+    mode: auto  # "auto" or "manual"
+    manualSpeed: 50  # 0-100, used when mode=manual
+    tempLow: 30  # Celsius, low temp threshold
+    tempHigh: 70  # Celsius, high temp threshold
+    fanSpeedLow: 0  # 0-100, fan speed at tempLow
+    fanSpeedHigh: 100  # 0-100, fan speed at tempHigh
+    fanMinOperatingSpeed: 10  # Minimum % for fan to spin
+    fanStopTemp: 20  # Below this temp, fan stops completely
+    fanCurve: exponential  # "linear", "exponential", or "step"
+    stepZones: "35:0,45:30,55:60,65:100"  # For step curve mode
+    stepHysteresis: 2  # Degrees C for step mode hysteresis
+```
+
+**To customize:**
 
 1. Edit `helm/values.yaml` with your settings
 2. Upgrade the release:
    ```bash
    helm upgrade sipeed-cm5-fancontrol ./helm -n [namespace]
    ```
+
+**Example: Change to manual mode at 75% speed:**
+
+```bash
+helm upgrade sipeed-cm5-fancontrol ./helm -n sipeed-cm5-fancontrol \
+  --set controller.config.mode=manual \
+  --set controller.config.manualSpeed=75
+```
+
+**Example: Adjust temperature thresholds:**
+
+```bash
+helm upgrade sipeed-cm5-fancontrol ./helm -n sipeed-cm5-fancontrol \
+  --set controller.config.tempLow=35 \
+  --set controller.config.tempHigh=65
+```
+
+### No peers.conf Needed
+
+Unlike the systemd deployment, Kubernetes deployment **doesn't need `peers.conf`** because:
+- Peer discovery is automatic via Kubernetes API
+- Temperature exporter pods are discovered dynamically
+- Peers are rediscovered every ~1 minute to handle pod restarts
 
 ## Notes
 

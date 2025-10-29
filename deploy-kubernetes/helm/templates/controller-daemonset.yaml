@@ -38,6 +38,9 @@ spec:
               mountPath: /sys
             - name: dev
               mountPath: /dev
+            - name: config
+              mountPath: /etc/sipeed-cm5-fancontrol
+              readOnly: true
           env:
             - name: PYTHONUNBUFFERED
               value: "1"
@@ -52,5 +55,8 @@ spec:
           hostPath:
             path: /dev
             type: Directory
+        - name: config
+          configMap:
+            name: {{ include "sipeed-cm5-fancontrol.fullname" . }}-controller-config
       tolerations:
         - operator: "Exists"

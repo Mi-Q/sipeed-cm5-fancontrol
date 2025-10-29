@@ -22,6 +22,20 @@ controller:
     port: 8081
   securityContext:
     privileged: true
+  
+  # Fan controller configuration (loaded from ConfigMap)
+  config:
+    mode: auto  # "auto" or "manual"
+    manualSpeed: 50  # 0-100, used when mode=manual
+    tempLow: 30  # Celsius, low temp threshold
+    tempHigh: 70  # Celsius, high temp threshold
+    fanSpeedLow: 0  # 0-100, fan speed at tempLow
+    fanSpeedHigh: 100  # 0-100, fan speed at tempHigh
+    fanMinOperatingSpeed: 10  # Minimum % for fan to spin
+    fanStopTemp: 20  # Below this temp, fan stops completely
+    fanCurve: exponential  # "linear", "exponential", or "step"
+    stepZones: "35:0,45:30,55:60,65:100"  # For step curve mode
+    stepHysteresis: 2  # Degrees C for step mode hysteresis
 
 exporter:
   image:

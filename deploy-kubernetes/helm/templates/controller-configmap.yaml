@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "sipeed-cm5-fancontrol.fullname" . }}-controller-config
+  labels:
+    {{- include "sipeed-cm5-fancontrol.labels" . | nindent 4 }}
+    app.kubernetes.io/component: controller
+data:
+  fancontrol.conf: |
+    # Sipeed CM5 Fan Control Configuration
+    
+    # Fan control mode: "auto" or "manual"
+    # - auto: Automatically adjust fan speed based on temperature
+    # - manual: Set fan to a fixed speed percentage
+    MODE={{ .Values.controller.config.mode | default "auto" }}
+    
+    # Manual mode fan speed (0-100)
+    # Only used when MODE=manual
+    MANUAL_SPEED={{ .Values.controller.config.manualSpeed | default 50 }}
+    
+    # Auto mode temperature thresholds (Celsius)
+    # Only used when MODE=auto
+    TEMP_LOW={{ .Values.controller.config.tempLow | default 30 }}
+    TEMP_HIGH={{ .Values.controller.config.tempHigh | default 70 }}
+    
+    # Auto mode fan speed percentages (0-100)
+    # Only used when MODE=auto
+    FAN_SPEED_LOW={{ .Values.controller.config.fanSpeedLow | default 0 }}
+    FAN_SPEED_HIGH={{ .Values.controller.config.fanSpeedHigh | default 100 }}
+    
+    # Minimum operating fan speed (percentage)
+    # Many fans don't spin below 10% duty cycle. This setting ensures the fan
+    # either stays off (0%) or runs at minimum operating speed or higher.
+    # If calculated speed falls between 0 and this value, it will snap to either
+    # 0% (if temp <= FAN_STOP_TEMP) or this minimum value (if temp > FAN_STOP_TEMP)
+    FAN_MIN_OPERATING_SPEED={{ .Values.controller.config.fanMinOperatingSpeed | default 10 }}
+    
+    # Temperature threshold for fan stop (Celsius)
+    # Below this temperature, fan will be completely off (0%)
+    # Above this temperature, fan will run at minimum FAN_MIN_OPERATING_SPEED or higher
+    # Set to 0 to disable automatic fan stop
+    FAN_STOP_TEMP={{ .Values.controller.config.fanStopTemp | default 20 }}
+    
+    # Fan curve type: "linear", "exponential", or "step"
+    # Only used when MODE=auto
+    # - linear: Fan speed increases proportionally with temperature
+    # - exponential: Fan speed increases slowly at low temps, rapidly at high temps (quieter)
+    # - step: Fan speed changes in discrete steps with hysteresis (most predictable)
+    FAN_CURVE={{ .Values.controller.config.fanCurve | default "exponential" }}
+    
+    # Step mode configuration (only used when FAN_CURVE=step)
+    # Temperature zones and corresponding fan speeds (comma-separated)
+    # Format: temp1:speed1,temp2:speed2,temp3:speed3,...
+    # Example: 35:0,45:30,55:60,65:100 means:
+    #   - Below 35°C: 0% fan
+    #   - 35-45°C: 30% fan
+    #   - 45-55°C: 60% fan
+    #   - 55-65°C: 100% fan
+    STEP_ZONES={{ .Values.controller.config.stepZones | default "35:0,45:30,55:60,65:100" }}
+    
+    # Hysteresis for step mode (degrees Celsius)
+    # Prevents rapid speed changes near zone boundaries
+    # Temperature must change by this amount to trigger a zone change
+    STEP_HYSTERESIS={{ .Values.controller.config.stepHysteresis | default 2 }}
