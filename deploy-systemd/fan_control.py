@@ -258,13 +258,7 @@ def import_gpio(dry_run: bool):
         # and avoid namespace issues (returns module object as GPIO)
         import RPi.GPIO as GPIO
 
-        # Test if GPIO can actually be initialized (fails in containers without proper access)
-        try:
-            GPIO.setmode(GPIO.BCM)
-            return GPIO
-        except (RuntimeError, ValueError) as e:
-            logger.warning("RPi.GPIO cannot access hardware (%s), falling back to DummyGPIO", e)
-            return DummyGPIO()
+        return GPIO
     except ImportError:
         logger.warning("RPi.GPIO not available, falling back to DummyGPIO (dry-run mode)")
         return DummyGPIO()
@@ -531,16 +525,15 @@ class FanController:
         try:
             # If module is class-like (DummyGPIO), follow its API
             self.GPIO.setmode(self.GPIO.BCM)
-        except AttributeError:
-            # Some real GPIO modules expect module-level calls
-            pass
-
-        # create PWM instance
-        try:
             self.GPIO.setup(self.pin, self.GPIO.OUT)
             self.pwm = self.GPIO.PWM(self.pin, self.freq)
-        except AttributeError:
-            # If module values are functions, call accordingly
+        except (AttributeError, RuntimeError, ValueError) as e:
+            # GPIO hardware not accessible or DummyGPIO, use dummy PWM
+            if not isinstance(e, AttributeError):
+                logger.warning("GPIO hardware not accessible (%s), using DummyPWM", e)
+            self.GPIO = DummyGPIO()
+            self.GPIO.setmode(self.GPIO.BCM)
+            self.GPIO.setup(self.pin, self.GPIO.OUT)
             self.pwm = DummyPWM(self.pin, self.freq)
 
     def _parse_step_zones(self, zones_str: str) -> List[tuple]:
