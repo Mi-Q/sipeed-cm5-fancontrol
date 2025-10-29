@@ -269,13 +269,64 @@ echo -e "${YELLOW}Installing ${SERVICE_TYPE} service...${NC}"
 
 # Additional configuration for fan control node
 if [ "$NODE_TYPE" = "1" ]; then
-    echo ""
-    echo "Enter the hostnames or IPs of peer nodes (comma-separated):"
-    echo "Examples:"
-    echo "  - Hostnames: node2,node3,node4,node5,node6,node7"
-    echo "  - IPs: 192.168.1.102,192.168.1.103,192.168.1.104,..."
-    echo "  - Mixed: node2,192.168.1.103,node4,node5,node6,node7"
-    read -p "Peer nodes: " PEER_NODES
+    # Check if we have saved peer configuration from previous installation
+    PEERS_CONFIG_FILE="/etc/sipeed-fancontrol-peers.conf"
+    SAVED_PEERS=""
+    
+    if [ -f "$PEERS_CONFIG_FILE" ]; then
+        SAVED_PEERS=$(cat "$PEERS_CONFIG_FILE" 2>/dev/null || echo "")
+    fi
+    
+    # If no saved peers file, try to extract from existing service file
+    if [ -z "$SAVED_PEERS" ] && [ -f "/etc/systemd/system/sipeed-cm5-fancontrol.service" ]; then
+        SAVED_PEERS=$(grep "ExecStart.*--peers" "/etc/systemd/system/sipeed-cm5-fancontrol.service" | sed -n 's/.*--peers \([^ ]*\).*/\1/p' || echo "")
+        if [ -n "$SAVED_PEERS" ]; then
+            echo -e "${BLUE}Extracted peer configuration from existing service${NC}"
+        fi
+    fi
+    
+    # If we found saved peers, offer to use them
+    if [ -n "$SAVED_PEERS" ]; then
+        echo ""
+        echo -e "${BLUE}Found saved peer configuration:${NC}"
+        echo "  $SAVED_PEERS"
+        echo ""
+        read -p "Use saved peers? [Y/n]: " USE_SAVED
+        if [ "$USE_SAVED" != "n" ] && [ "$USE_SAVED" != "N" ]; then
+            PEER_NODES="$SAVED_PEERS"
+            echo -e "${GREEN}✓ Using saved peer configuration${NC}"
+        else
+            SAVED_PEERS=""  # Clear to ask for new input
+        fi
+    fi
+    
+    # If no saved peers or user chose not to use them, ask for input
+    if [ -z "$PEER_NODES" ]; then
+        echo ""
+        echo "Enter the hostnames or IPs of peer nodes (comma-separated):"
+        echo "Examples:"
+        echo "  - Hostnames: node2,node3,node4,node5,node6,node7"
+        echo "  - IPs: 192.168.1.102,192.168.1.103,192.168.1.104,..."
+        echo "  - Mixed: node2,192.168.1.103,node4,node5,node6,node7"
+        if [ -n "$SAVED_PEERS" ]; then
+            echo "  - Press Enter to use: $SAVED_PEERS"
+        fi
+        read -p "Peer nodes: " PEER_NODES_INPUT
+        
+        # If user pressed Enter and we have saved peers, use them
+        if [ -z "$PEER_NODES_INPUT" ] && [ -n "$SAVED_PEERS" ]; then
+            PEER_NODES="$SAVED_PEERS"
+            echo -e "${GREEN}✓ Using saved peer configuration${NC}"
+        else
+            PEER_NODES="$PEER_NODES_INPUT"
+        fi
+    fi
+    
+    # Save peer configuration for future reinstalls
+    if [ -n "$PEER_NODES" ]; then
+        echo "$PEER_NODES" > "$PEERS_CONFIG_FILE"
+        echo -e "${BLUE}Peer configuration saved to $PEERS_CONFIG_FILE${NC}"
+    fi
     
     # Always use HTTP method (SSH removed for simplicity)
     REMOTE_METHOD_ARG="http"
