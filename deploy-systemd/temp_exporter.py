@@ -141,6 +141,9 @@ def main():
     if args.verbose:
         logger.setLevel(logging.DEBUG)
 
+    # Enable SO_REUSEADDR to allow quick restart without waiting for TIME_WAIT
+    socketserver.TCPServer.allow_reuse_address = True
+
     with socketserver.TCPServer((args.bind, args.port), TempHandler) as httpd:
         logger.info("Temperature exporter listening on %s:%d", args.bind, args.port)
         try:
