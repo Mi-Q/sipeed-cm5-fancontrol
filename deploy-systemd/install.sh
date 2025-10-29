@@ -114,11 +114,62 @@ if [ ${#EXISTING_SERVICES[@]} -gt 0 ] || [ -d "$INSTALL_DIR" ]; then
         1)
             echo ""
             echo -e "${YELLOW}Proceeding with reinstall...${NC}"
-            # Stop existing services before reinstalling
+            # Stop existing services before reinstalling and wait for cleanup
             for service in "${EXISTING_SERVICES[@]}"; do
                 if systemctl is-active --quiet "$service.service"; then
                     echo "Stopping $service..."
                     systemctl stop "$service.service"
+                    
+                    # Determine which port to check
+                    if [ "$service" = "sipeed-cm5-fancontrol" ]; then
+                        PORT_TO_CHECK=8081
+                    elif [ "$service" = "sipeed-temp-exporter" ]; then
+                        PORT_TO_CHECK=8080
+                    else
+                        continue
+                    fi
+                    
+                    # Wait for service to stop and port to be released
+                    echo "Waiting for $service to stop completely and port $PORT_TO_CHECK to be released..."
+                    TIMEOUT=30
+                    ELAPSED=0
+                    SERVICE_INACTIVE=false
+                    PORT_FREE=false
+                    
+                    while (( ELAPSED < TIMEOUT )); do
+                        # Check if service is inactive
+                        if ! systemctl is-active --quiet "$service.service"; then
+                            SERVICE_INACTIVE=true
+                        fi
+                        
+                        # Check if port is free
+                        if ! ss -tlnH "sport = :$PORT_TO_CHECK" 2>/dev/null | grep -q ":$PORT_TO_CHECK"; then
+                            PORT_FREE=true
+                        fi
+                        
+                        # Exit loop if both conditions are met
+                        if [ "$SERVICE_INACTIVE" = true ] && [ "$PORT_FREE" = true ]; then
+                            echo "✓ $service stopped and port $PORT_TO_CHECK released (after ${ELAPSED}s)"
+                            break
+                        fi
+                        
+                        sleep 1
+                        ELAPSED=$((ELAPSED + 1))
+                    done
+                    
+                    # Report timeout errors
+                    if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
+                        if [ "$SERVICE_INACTIVE" != true ]; then
+                            echo -e "${RED}Error: Service $service still active after ${TIMEOUT}s${NC}"
+                            exit 1
+                        fi
+                        if [ "$PORT_FREE" != true ]; then
+                            echo -e "${RED}Error: Port $PORT_TO_CHECK still in use after ${TIMEOUT}s${NC}"
+                            echo "Port usage:"
+                            ss -tlnp | grep ":$PORT_TO_CHECK" || true
+                            exit 1
+                        fi
+                    fi
                 fi
             done
             echo ""
@@ -299,9 +350,21 @@ fi
 # Enable and start service
 echo "Enabling and starting $SERVICE_NAME service..."
 systemctl enable "$SERVICE_NAME.service"
-systemctl start "$SERVICE_NAME.service"
 
-# Check service status
+# Start the service and capture any immediate errors
+if ! systemctl start "$SERVICE_NAME.service" 2>&1; then
+    echo ""
+    echo -e "${RED}✗ Failed to start service${NC}"
+    echo ""
+    echo "Service status:"
+    systemctl status "$SERVICE_NAME.service" --no-pager -l || true
+    echo ""
+    echo "Recent logs:"
+    journalctl -u "$SERVICE_NAME.service" -n 30 --no-pager
+    exit 1
+fi
+
+# Wait a moment and check if service is still running
 sleep 2
 if systemctl is-active --quiet "$SERVICE_NAME.service"; then
     echo ""
@@ -323,8 +386,13 @@ if systemctl is-active --quiet "$SERVICE_NAME.service"; then
     fi
 else
     echo ""
-    echo -e "${RED}✗ Service failed to start${NC}"
-    echo "Check logs with: sudo journalctl -u $SERVICE_NAME.service -n 50"
+    echo -e "${RED}✗ Service failed to start or crashed immediately${NC}"
+    echo ""
+    echo "Service status:"
+    systemctl status "$SERVICE_NAME.service" --no-pager -l || true
+    echo ""
+    echo "Recent logs:"
+    journalctl -u "$SERVICE_NAME.service" -n 30 --no-pager
     exit 1
 fi
 
