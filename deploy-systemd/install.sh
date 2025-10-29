@@ -259,7 +259,7 @@ if systemctl is-active --quiet "$SERVICE_NAME.service"; then
     echo "Waiting for port $PORT_TO_CHECK to be released..."
     TIMEOUT=10
     ELAPSED=0
-    while [ $ELAPSED -lt $TIMEOUT ]; do
+    while (( ELAPSED < TIMEOUT )); do
         if ! ss -tlnH "sport = :$PORT_TO_CHECK" 2>/dev/null | grep -q ":$PORT_TO_CHECK"; then
             echo "Port $PORT_TO_CHECK is now available"
             break
