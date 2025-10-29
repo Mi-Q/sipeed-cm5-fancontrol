@@ -250,6 +250,9 @@ if systemctl is-active --quiet "$SERVICE_NAME.service"; then
         PORT_TO_CHECK=8081
     elif [ "$SERVICE_NAME" = "sipeed-temp-exporter" ]; then
         PORT_TO_CHECK=8080
+    else
+        echo -e "${RED}Error: Unknown service name '$SERVICE_NAME'. Cannot determine port to check.${NC}"
+        exit 1
     fi
     
     # Wait for port to be released with timeout
