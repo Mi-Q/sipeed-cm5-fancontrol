@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Kubernetes ConfigMap for fan controller configuration**
+  - Fan controller settings managed via Kubernetes ConfigMap instead of file-based config
+  - All configuration values customizable via Helm `values.yaml`
+  - Easy updates with `helm upgrade --set` commands
+  - GitOps-friendly configuration management
+  - No need for `peers.conf` - Kubernetes auto-discovery handles peer management
+- **Automatic GPIO library detection for deployment environments**
+  - Kubernetes deployment: Uses `lgpio` library (works in containers on RPi 5/CM5)
+  - Systemd deployment: Uses `RPi.GPIO` library (traditional approach)
+  - Detects environment by checking for Kubernetes service account token
+  - Seamless hardware GPIO access in both environments
+  - Graceful fallback to DummyGPIO if libraries unavailable
+- **Enhanced fan duty cycle logging**
+  - Temperature logs now include current fan duty cycle percentage
+  - Format: `Temperatures: local=40.2°C, http://10.42.4.18:8080/temp=34.8°C | Fan: 45.0%`
+  - Provides complete visibility of fan controller operation
+- **Automatic peer rediscovery in Kubernetes**
+  - Fan controller rediscovers temperature exporter pods every ~1 minute
+  - Handles pod restarts with new IP addresses gracefully
+  - Logs "Peer list updated" when changes detected
+  - No manual intervention needed when pods are rescheduled
+- **CI/CD optimization for Docker image builds**
+  - Images only build when relevant files change
+  - Controller image: `fan_control.py`, `k8s_discovery.py`, `Dockerfile`
+  - Exporter image: `temp_exporter.py`, `Dockerfile.exporter`
+  - Faster CI runs for documentation-only changes
+  - Reduced container registry API usage
+- **Comprehensive Kubernetes documentation**
+  - DaemonSets vs Deployments explanation
+  - Five methods to stop/start/pause pods
+  - Pod management guide with examples
+  - Configuration customization examples
+  - Hardware access requirements with lgpio details
+
+### Changed
+- **LGPIOWrapper and LGPIOPWMWrapper classes** provide RPi.GPIO-compatible interface for lgpio
+- **Kubernetes Dockerfile** now installs lgpio with required dependencies (libgpiod-dev, swig)
+- **requirements.txt** includes lgpio as conditional dependency for aarch64 platforms
+- **Kubernetes README** updated with hardware access details and lgpio usage
+- **Fan controller** periodic rediscovery enabled via `k8s_discovery_enabled` flag
+- **Discovery interval** set to 12 polling cycles (~1 minute with 5s polls)
+
 ### Fixed
 - **Reinstallation "Address already in use" errors completely resolved**
   - Added SO_REUSEADDR socket option to both `temp_exporter.py` and `fan_control.py`

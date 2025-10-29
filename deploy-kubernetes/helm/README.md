@@ -43,20 +43,73 @@ helm uninstall sipeed-cm5-fancontrol -n [namespace]
 
 The following table lists the configurable parameters of the chart and their default values.
 
+### Controller Settings
+
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `controller.image.repository` | Fan controller image repository | `ghcr.io/mi-q/sipeed-cm5-fancontrol` |
 | `controller.image.tag` | Fan controller image tag | `latest` |
-| `controller.image.pullPolicy` | Fan controller image pull policy | `IfNotPresent` |
-| `controller.resources` | Fan controller pod resource requests & limits | `{}` |
-| `controller.args` | Fan controller arguments | `[]` |
-| `controller.securityContext.privileged` | Run controller container as privileged | `true` |
+| `controller.image.pullPolicy` | Fan controller image pull policy | `Always` |
+| `controller.resources.limits.cpu` | CPU limit | `100m` |
+| `controller.resources.limits.memory` | Memory limit | `128Mi` |
+| `controller.resources.requests.cpu` | CPU request | `50m` |
+| `controller.resources.requests.memory` | Memory request | `64Mi` |
+| `controller.args` | Fan controller arguments | See `values.yaml` |
+| `controller.securityContext.privileged` | Run container as privileged (GPIO access) | `true` |
+| `controller.service.port` | Status endpoint port | `8081` |
+
+### Controller Configuration (ConfigMap)
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `controller.config.mode` | Fan control mode: `auto` or `manual` | `auto` |
+| `controller.config.manualSpeed` | Manual mode fan speed (0-100) | `50` |
+| `controller.config.tempLow` | Low temperature threshold (°C) | `30` |
+| `controller.config.tempHigh` | High temperature threshold (°C) | `70` |
+| `controller.config.fanSpeedLow` | Fan speed at tempLow (0-100) | `0` |
+| `controller.config.fanSpeedHigh` | Fan speed at tempHigh (0-100) | `100` |
+| `controller.config.fanMinOperatingSpeed` | Minimum fan speed to spin (0-100) | `10` |
+| `controller.config.fanStopTemp` | Temperature below which fan stops (°C) | `20` |
+| `controller.config.fanCurve` | Fan curve type: `linear`, `exponential`, or `step` | `exponential` |
+| `controller.config.stepZones` | Step mode zones (temp:speed pairs) | `"35:0,45:30,55:60,65:100"` |
+| `controller.config.stepHysteresis` | Step mode hysteresis (°C) | `2` |
+
+### Exporter Settings
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
 | `exporter.image.repository` | Temperature exporter image repository | `ghcr.io/mi-q/sipeed-temp-exporter` |
 | `exporter.image.tag` | Temperature exporter image tag | `latest` |
-| `exporter.image.pullPolicy` | Temperature exporter image pull policy | `IfNotPresent` |
-| `exporter.resources` | Temperature exporter pod resource requests & limits | `{}` |
-| `exporter.args` | Temperature exporter arguments | `[]` |
+| `exporter.image.pullPolicy` | Temperature exporter image pull policy | `Always` |
+| `exporter.resources.limits.cpu` | CPU limit | `100m` |
+| `exporter.resources.limits.memory` | Memory limit | `128Mi` |
+| `exporter.resources.requests.cpu` | CPU request | `50m` |
+| `exporter.resources.requests.memory` | Memory request | `64Mi` |
+| `exporter.args` | Temperature exporter arguments | See `values.yaml` |
 | `exporter.service.port` | Temperature exporter service port | `8080` |
+
+### Examples
+
+**Change temperature thresholds:**
+```bash
+helm upgrade sipeed-cm5-fancontrol ./helm \
+  --set controller.config.tempLow=35 \
+  --set controller.config.tempHigh=65
+```
+
+**Switch to manual mode:**
+```bash
+helm upgrade sipeed-cm5-fancontrol ./helm \
+  --set controller.config.mode=manual \
+  --set controller.config.manualSpeed=75
+```
+
+**Use step curve mode:**
+```bash
+helm upgrade sipeed-cm5-fancontrol ./helm \
+  --set controller.config.fanCurve=step \
+  --set controller.config.stepZones="30:0,40:40,50:70,60:100"
+```
 
 ## Architecture
 

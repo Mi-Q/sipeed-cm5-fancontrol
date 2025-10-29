@@ -40,11 +40,19 @@ Reboot after making this change for k3s to function properly.
   - **Auto mode**: PWM-based fan control with configurable temperature thresholds
   - **Manual mode**: Fixed fan speed percentage for custom setups
 - **Real-time monitoring**:
-  - HTTP status endpoint showing all node temperatures
-  - CLI tool (`fanctl`) for quick status checks
-  - Enhanced logging with individual temperature readings
-- Configuration files in `/etc/sipeed-cm5-fancontrol/` for easy mode switching
-- Temperature polling from local and remote nodes (HTTP or SSH)
+  - HTTP status endpoint showing all node temperatures and fan duty cycle
+  - CLI tool (`cm5fan`) for quick status checks
+  - Enhanced logging with individual temperature readings and fan percentage
+- **Kubernetes-native deployment**:
+  - ConfigMap-based configuration (no manual file creation needed)
+  - Automatic peer discovery via Kubernetes API
+  - Dynamic pod rediscovery (~1 minute) when pods restart
+  - lgpio support for GPIO access in containers on RPi 5/CM5
+- **Systemd deployment**:
+  - Configuration files in `/etc/sipeed-cm5-fancontrol/` for easy mode switching
+  - RPi.GPIO library for traditional GPIO access
+  - HTTP-based temperature polling from peer nodes
+- Temperature polling from local and remote nodes (HTTP)
 - Parallel peer temperature polling for fast aggregation
 - Prometheus-compatible metrics endpoint
 - Interactive installation with one-line curl support
@@ -54,6 +62,16 @@ Reboot after making this change for k3s to function properly.
 - Pre-commit hooks for code quality (black, isort, flake8)
 
 ## Deployment Options
+
+Choose between systemd (traditional) or Kubernetes (container-based) deployment:
+
+| Feature | Systemd | Kubernetes |
+|---------|---------|------------|
+| Configuration | File-based (`/etc/sipeed-cm5-fancontrol/`) | ConfigMap-based |
+| Peer Discovery | Static (configured at install) | Dynamic (auto-discovery) |
+| GPIO Library | RPi.GPIO | lgpio (container-compatible) |
+| Installation | Interactive installer script | Helm chart |
+| Best For | Single-node or simple setups | Cluster environments |
 
 ### 1. Systemd Service (Direct on Raspberry Pi)
 
@@ -74,15 +92,34 @@ The interactive installer will guide you through setting up either:
 curl -sSL https://raw.githubusercontent.com/Mi-Q/sipeed-cm5-fancontrol/main/deploy-systemd/install.sh | sudo bash -s -- --reinstall
 ```
 
-For detailed documentation, see [deploy-systemd/README.md](./deploy-systemd/README.md)
+**📖 For detailed documentation, see [deploy-systemd/README.md](./deploy-systemd/README.md)**
+
+Includes:
+- Architecture and hardware setup
+- Installation options and upgrade guide
+- Configuration modes (auto/manual)
+- Fan curves and temperature thresholds
+- CLI tools and monitoring
+- Troubleshooting guide
 
 ### 2. Kubernetes Deployment (k3s)
 
-See [deploy-kubernetes/README.md](./deploy-kubernetes/README.md) for:
-- Helm chart installation
-- Configuration options
-- Architecture details
-- Security considerations
+**Quick Install:**
+```bash
+cd deploy-kubernetes
+./install.sh sipeed-cm5-fancontrol
+```
+
+**📖 For detailed documentation, see [deploy-kubernetes/README.md](./deploy-kubernetes/README.md)**
+
+Includes:
+- Helm chart installation and upgrades
+- ConfigMap-based configuration
+- DaemonSets vs Deployments explanation
+- Pod management (start/stop/pause)
+- Automatic peer rediscovery
+- Hardware access with lgpio
+- Monitoring and troubleshooting
 
 ## Development
 

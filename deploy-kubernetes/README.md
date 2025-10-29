@@ -12,16 +12,18 @@ This directory contains the Kubernetes (k3s) deployment configuration using Helm
 
 ## Key Differences from Systemd Deployment
 
-**Kubernetes deployment** uses dynamic peer discovery:
-- No need to manually configure peer addresses
+**Kubernetes deployment** uses ConfigMap and dynamic peer discovery:
+- Configuration managed via Kubernetes ConfigMap (no manual file creation)
 - Automatically discovers all temperature exporter pods via Kubernetes API
-- Adapts to nodes being added/removed from cluster
-- Uses RBAC and ServiceAccount for API access
+- Rediscovers pods every ~1 minute (handles pod restarts with new IPs)
+- Uses lgpio library for GPIO access in containers on RPi 5/CM5
+- RBAC-based Kubernetes API access
 
-**Systemd deployment** uses static peer configuration:
+**Systemd deployment** uses file-based configuration and static peers:
+- Configuration files in `/etc/sipeed-cm5-fancontrol/`
 - Peers defined at installation time via `install.sh`
-- Static list in systemd service file
-- See `../deploy-systemd/README.md` for details
+- Uses RPi.GPIO library for traditional GPIO access
+- See [`../deploy-systemd/README.md`](../deploy-systemd/README.md) for details
 
 Both deployments share the same core `fan_control.py` logic, which gracefully handles both modes.
 
