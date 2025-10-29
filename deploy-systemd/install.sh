@@ -118,6 +118,8 @@ if [ ${#EXISTING_SERVICES[@]} -gt 0 ] || [ -d "$INSTALL_DIR" ]; then
             for service in "${EXISTING_SERVICES[@]}"; do
                 if systemctl is-active --quiet "$service.service"; then
                     echo "Stopping $service..."
+                    # Disable first to prevent automatic restarts
+                    systemctl disable "$service.service" 2>/dev/null || true
                     systemctl stop "$service.service"
                     
                     # Determine which port to check
@@ -170,6 +172,9 @@ if [ ${#EXISTING_SERVICES[@]} -gt 0 ] || [ -d "$INSTALL_DIR" ]; then
                             exit 1
                         fi
                     fi
+                    
+                    # Reset failed state to prevent automatic restart attempts
+                    systemctl reset-failed "$service.service" 2>/dev/null || true
                 fi
             done
             echo ""
