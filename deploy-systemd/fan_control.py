@@ -47,7 +47,9 @@ DEFAULT_MAX_TEMP = 60.0
 logger = logging.getLogger("sipeed-cm5-fancontrol")
 
 
-def load_config(config_path: str = "/etc/sipeed-fancontrol.conf") -> Dict[str, any]:
+def load_config(
+    config_path: str = "/etc/sipeed-cm5-fancontrol/fancontrol.conf",
+) -> Dict[str, any]:
     """Load configuration from file.
 
     Args:
@@ -493,7 +495,7 @@ class FanController:
         self.aggregate = "max"  # or 'avg'
 
         # Load config file
-        self.config_path = config_path or "/etc/sipeed-fancontrol.conf"
+        self.config_path = config_path or "/etc/sipeed-cm5-fancontrol/fancontrol.conf"
         self.config = load_config(self.config_path)
         self.mode = self.config["mode"]
         self.manual_speed = self.config["manual_speed"]

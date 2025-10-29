@@ -103,9 +103,21 @@ if [ -d "$INSTALL_DIR" ]; then
     echo -e "${GREEN}✓ Removed $INSTALL_DIR${NC}"
 fi
 
-# Remove config file
-if [ -f "/etc/sipeed-fancontrol.conf" ]; then
-    read -p "Remove configuration file /etc/sipeed-fancontrol.conf? [y/N]: " REMOVE_CONFIG
+# Remove config directory
+if [ -d "/etc/sipeed-cm5-fancontrol" ]; then
+    read -p "Remove configuration directory /etc/sipeed-cm5-fancontrol/? [y/N]: " REMOVE_CONFIG
+    case $REMOVE_CONFIG in
+        [yY]|[yY][eE][sS])
+            rm -rf "/etc/sipeed-cm5-fancontrol"
+            echo -e "${GREEN}✓ Removed /etc/sipeed-cm5-fancontrol/${NC}"
+            ;;
+        *)
+            echo -e "${BLUE}Kept /etc/sipeed-cm5-fancontrol/${NC}"
+            ;;
+    esac
+elif [ -f "/etc/sipeed-fancontrol.conf" ]; then
+    # Legacy config file location
+    read -p "Remove legacy configuration file /etc/sipeed-fancontrol.conf? [y/N]: " REMOVE_CONFIG
     case $REMOVE_CONFIG in
         [yY]|[yY][eE][sS])
             rm -f "/etc/sipeed-fancontrol.conf"
