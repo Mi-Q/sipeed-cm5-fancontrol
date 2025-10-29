@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Installation script (install.sh) improvements**
   - Fixed "Address already in use" error during temperature exporter and fan control service reinstall
   - Now properly stops service and waits for port to be released before restarting
+  - Improved wait mechanism: 30-second timeout checking both service status and port availability every second
+  - Script now exits with error if service doesn't stop or port isn't freed within timeout
   - Ensures clean reinstallation without port conflicts
 - **Simplified installation process**
   - Removed SSH polling option (HTTP-only for easier setup)
