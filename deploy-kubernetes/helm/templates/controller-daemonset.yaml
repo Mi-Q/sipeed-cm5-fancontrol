@@ -20,7 +20,7 @@ spec:
       hostPID: true
       serviceAccountName: sipeed-fan-controller
       nodeSelector:
-        node-role.kubernetes.io/master: "true"
+        node-role.kubernetes.io/control-plane: "true"
       containers:
         - name: fan-controller
           image: "{{ .Values.controller.image.repository }}:{{ .Values.controller.image.tag }}"

@@ -47,21 +47,21 @@ Both deployments share the same core `fan_control.py` logic, which gracefully ha
 - k3s/Kubernetes cluster running on Sipeed CM5 nodes
 - Helm 3.x installed
 - `kubectl` configured to access your cluster
-- Master node labeled with `node-role.kubernetes.io/master=true`
+- Control plane node labeled with `node-role.kubernetes.io/control-plane=true`
 
 ### Node Labeling
 
-Ensure your master node (Slot 1 with fan) is properly labeled:
+Ensure your control plane node (Slot 1 with fan) is properly labeled:
 
 ```bash
 # Check current labels
 kubectl get nodes --show-labels
 
-# Label the master node if needed
-kubectl label nodes <master-node-name> node-role.kubernetes.io/master=true
+# Label the control plane node if needed
+kubectl label nodes <control-plane-node-name> node-role.kubernetes.io/control-plane=true
 
 # Verify the label
-kubectl get nodes -l node-role.kubernetes.io/master=true
+kubectl get nodes -l node-role.kubernetes.io/control-plane=true
 ```
 
 ## Installation
@@ -158,8 +158,8 @@ controller:
 ## Architecture
 
 The deployment consists of:
-1. **Fan Controller DaemonSet** (Master Node Only):
-   - Runs exclusively on the master node (node-role.kubernetes.io/master=true)
+1. **Fan Controller DaemonSet** (Control Plane Node Only):
+   - Runs exclusively on the control plane node (node-role.kubernetes.io/control-plane=true)
    - Accesses GPIO for fan control via `/sys` and `/dev` mounts
    - Runs with `privileged: true` and `hostPID: true` for hardware access
    - Polls temperatures from local and peer nodes
