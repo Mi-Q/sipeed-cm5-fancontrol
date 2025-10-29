@@ -27,6 +27,7 @@ spec:
         - name: temp-exporter
           image: "{{ .Values.exporter.image.repository }}:{{ .Values.exporter.image.tag }}"
           imagePullPolicy: {{ .Values.exporter.image.pullPolicy }}
+          command: ["python3", "/app/temp_exporter.py"]
           args:
             {{- toYaml .Values.exporter.args | nindent 12 }}
           ports:
