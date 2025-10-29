@@ -63,6 +63,9 @@ def load_config(config_path: str = "/etc/sipeed-fancontrol.conf") -> Dict[str, a
         "temp_high": DEFAULT_MAX_TEMP,
         "fan_speed_low": DEFAULT_MIN_DUTY,
         "fan_speed_high": 100.0,
+        "fan_curve": "exponential",
+        "step_zones": "35:0,45:30,55:60,65:100",
+        "step_hysteresis": 2.0,
     }
 
     if not os.path.exists(config_path):
@@ -87,6 +90,9 @@ def load_config(config_path: str = "/etc/sipeed-fancontrol.conf") -> Dict[str, a
             "temp_high": float(section.get("TEMP_HIGH", str(DEFAULT_MAX_TEMP))),
             "fan_speed_low": float(section.get("FAN_SPEED_LOW", str(DEFAULT_MIN_DUTY))),
             "fan_speed_high": float(section.get("FAN_SPEED_HIGH", "100")),
+            "fan_curve": section.get("FAN_CURVE", "exponential").lower(),
+            "step_zones": section.get("STEP_ZONES", "35:0,45:30,55:60,65:100"),
+            "step_hysteresis": float(section.get("STEP_HYSTERESIS", "2")),
         }
     except Exception as e:
         logger.warning("Error loading config file: %s, using defaults", e)
@@ -401,19 +407,46 @@ def temp_to_duty(
     max_temp: float = DEFAULT_MAX_TEMP,
     min_duty: float = DEFAULT_MIN_DUTY,
     max_duty: float = 100.0,
+    curve_type: str = "linear",
 ) -> float:
-    """Map temperature to PWM duty cycle.
+    """Map temperature to PWM duty cycle with various curve types.
 
-    - temp <= min_temp -> min_duty
-    - temp >= max_temp -> max_duty
-    - linear in-between
+    Args:
+        temp_c: Current temperature in Celsius
+        min_temp: Temperature at or below which min_duty is used
+        max_temp: Temperature at or above which max_duty is used
+        min_duty: Minimum duty cycle percentage (0-100)
+        max_duty: Maximum duty cycle percentage (0-100)
+        curve_type: Type of curve - "linear", "exponential", or "step"
+
+    Returns:
+        PWM duty cycle percentage (0-100)
+
+    Curve Types:
+        - linear: Proportional increase (original behavior)
+        - exponential: Slow increase at low temps, rapid at high temps (quieter)
+        - step: Not used here, handled separately with hysteresis
     """
     if temp_c <= min_temp:
         return float(min_duty)
     if temp_c >= max_temp:
         return float(max_duty)
-    # linear interpolation
+
+    # Normalize temperature to 0-1 range
     ratio = (temp_c - min_temp) / (max_temp - min_temp)
+
+    if curve_type == "exponential":
+        # Quadratic curve: fan speed increases with square of temperature ratio
+        # This keeps the fan quieter at moderate temps while still providing
+        # aggressive cooling at high temps
+        ratio = ratio**2
+    elif curve_type == "linear":
+        # Linear interpolation (original behavior)
+        pass
+    else:
+        # Unknown curve type, fall back to linear
+        logger.warning("Unknown fan curve type '%s', using linear", curve_type)
+
     duty = min_duty + ratio * (max_duty - min_duty)
     return float(duty)
 
@@ -459,11 +492,26 @@ class FanController:
         self.mode = self.config["mode"]
         self.manual_speed = self.config["manual_speed"]
 
+        # Initialize fan curve attributes (used in auto mode)
+        self.max_duty = 100.0
+        self.fan_curve = "linear"
+        self.step_zones = []
+        self.step_hysteresis = 0
+        self.current_step_index = 0
+
         # Override temperature thresholds from config if in auto mode
         if self.mode == "auto":
             self.min_temp = self.config["temp_low"]
             self.max_temp = self.config["temp_high"]
             self.min_duty = self.config["fan_speed_low"]
+            self.max_duty = self.config["fan_speed_high"]
+            self.fan_curve = self.config["fan_curve"]
+
+            # Parse step zones for step curve mode
+            if self.fan_curve == "step":
+                self.step_zones = self._parse_step_zones(self.config["step_zones"])
+                self.step_hysteresis = self.config["step_hysteresis"]
+                self.current_step_index = 0  # Track current step for hysteresis
 
         # Status tracking
         self.last_temps = {}
@@ -486,6 +534,81 @@ class FanController:
         except AttributeError:
             # If module values are functions, call accordingly
             self.pwm = DummyPWM(self.pin, self.freq)
+
+    def _parse_step_zones(self, zones_str: str) -> List[tuple]:
+        """Parse step zones configuration string.
+
+        Args:
+            zones_str: Comma-separated zones in format "temp1:speed1,temp2:speed2,..."
+
+        Returns:
+            List of (temperature, speed) tuples sorted by temperature
+        """
+        zones = []
+        try:
+            for zone in zones_str.split(","):
+                temp_str, speed_str = zone.strip().split(":")
+                temp = float(temp_str)
+                speed = float(speed_str)
+                zones.append((temp, speed))
+            zones.sort(key=lambda x: x[0])  # Sort by temperature
+            logger.info("Parsed step zones: %s", zones)
+        except Exception as e:
+            logger.error(
+                "Error parsing step zones '%s': %s, using defaults", zones_str, e
+            )
+            zones = [(35, 0), (45, 30), (55, 60), (65, 100)]
+        return zones
+
+    def _calculate_step_duty(self, temp_c: float) -> float:
+        """Calculate duty cycle using step curve with hysteresis.
+
+        Args:
+            temp_c: Current temperature in Celsius
+
+        Returns:
+            Duty cycle percentage (0-100)
+        """
+        if not self.step_zones:
+            # Fallback to linear if no zones configured
+            return temp_to_duty(
+                temp_c,
+                self.min_temp,
+                self.max_temp,
+                self.min_duty,
+                self.max_duty,
+                "linear",
+            )
+
+        # Find appropriate zone with hysteresis
+        # If temperature is rising, need to exceed zone threshold
+        # If temperature is falling, need to fall below (threshold - hysteresis)
+
+        new_index = self.current_step_index
+
+        # Check if we should move to a higher zone (temperature rising)
+        for i in range(self.current_step_index + 1, len(self.step_zones)):
+            if temp_c >= self.step_zones[i][0]:
+                new_index = i
+
+        # Check if we should move to a lower zone (temperature falling)
+        for i in range(self.current_step_index - 1, -1, -1):
+            if temp_c < (
+                self.step_zones[i + 1][0] - self.step_hysteresis
+                if i + 1 < len(self.step_zones)
+                else float("inf")
+            ):
+                new_index = i
+            else:
+                break
+
+        self.current_step_index = new_index
+
+        # Return speed for current zone, or first zone if below all thresholds
+        if temp_c < self.step_zones[0][0]:
+            return float(self.step_zones[0][1])
+
+        return float(self.step_zones[self.current_step_index][1])
 
     def start(self):
         """Start the fan controller with initial duty cycle."""
@@ -533,6 +656,8 @@ class FanController:
                 "max_temp": self.max_temp,
                 "min_duty": self.min_duty,
                 "manual_speed": self.manual_speed if self.mode == "manual" else None,
+                "fan_curve": getattr(self, "fan_curve", "linear"),
+                "max_duty": getattr(self, "max_duty", 100.0),
             },
             "peers": self.peers,
             "remote_method": self.remote_method,
@@ -616,7 +741,19 @@ class FanController:
 
         self.last_aggregate_temp = t
 
-        duty = temp_to_duty(t, self.min_temp, self.max_temp, self.min_duty)
+        # Calculate duty based on configured fan curve
+        if self.fan_curve == "step":
+            duty = self._calculate_step_duty(t)
+        else:
+            duty = temp_to_duty(
+                t,
+                self.min_temp,
+                self.max_temp,
+                self.min_duty,
+                self.max_duty,
+                self.fan_curve,
+            )
+
         # clamp
         duty = max(self.min_duty, min(100.0, duty))
         # apply small hysteresis: only change if >1% difference
@@ -625,8 +762,9 @@ class FanController:
                 # real PWM ChangeDutyCycle or Dummy implementation
                 self.pwm.ChangeDutyCycle(duty)
                 logger.info(
-                    "Aggregate temp (method=%s): %.1f°C -> duty %.1f%%",
+                    "Aggregate temp (method=%s, curve=%s): %.1f°C -> duty %.1f%%",
                     self.aggregate,
+                    self.fan_curve,
                     t,
                     duty,
                 )
