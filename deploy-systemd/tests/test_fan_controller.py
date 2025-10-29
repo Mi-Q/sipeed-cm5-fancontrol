@@ -26,9 +26,7 @@ class TestImportGPIO(unittest.TestCase):
                 self.assertEqual(gpio_module.__class__.__name__, "DummyGPIO")
                 # Should log warning
                 mock_logger.warning.assert_called_once()
-                self.assertIn(
-                    "RPi.GPIO not available", mock_logger.warning.call_args[0][0]
-                )
+                self.assertIn("RPi.GPIO not available", mock_logger.warning.call_args[0][0])
 
     def test_rpi_gpio_available_success(self):
         """Test successful import of real RPi.GPIO module."""
@@ -143,9 +141,7 @@ class TestFanController(unittest.TestCase):
         # Mock pwm.stop() to raise AttributeError
         controller.pwm.stop = MagicMock(side_effect=AttributeError("stop not found"))
         # Mock GPIO.cleanup() to raise AttributeError
-        controller.GPIO.cleanup = MagicMock(
-            side_effect=AttributeError("cleanup not found")
-        )
+        controller.GPIO.cleanup = MagicMock(side_effect=AttributeError("cleanup not found"))
 
         # Should not raise exception
         controller.stop()
@@ -164,9 +160,7 @@ class TestFanController(unittest.TestCase):
         controller.start()
 
         # Mock ChangeDutyCycle to raise AttributeError
-        controller.pwm.ChangeDutyCycle = MagicMock(
-            side_effect=AttributeError("Method not found")
-        )
+        controller.pwm.ChangeDutyCycle = MagicMock(side_effect=AttributeError("Method not found"))
 
         with patch("fan_control.logger") as mock_logger:
             result = controller.run_once()
@@ -174,9 +168,7 @@ class TestFanController(unittest.TestCase):
             self.assertIsNotNone(result)
             # Should log warning
             mock_logger.warning.assert_called()
-            self.assertIn(
-                "Failed to set duty cycle", mock_logger.warning.call_args[0][0]
-            )
+            self.assertIn("Failed to set duty cycle", mock_logger.warning.call_args[0][0])
 
     @patch("fan_control.read_cpu_temp")
     def test_all_temps_fail(self, mock_read_temp):
@@ -254,9 +246,7 @@ class TestFanController(unittest.TestCase):
 
                 # Should log exception
                 mock_logger.exception.assert_called()
-                self.assertIn(
-                    "Error in run loop", mock_logger.exception.call_args[0][0]
-                )
+                self.assertIn("Error in run loop", mock_logger.exception.call_args[0][0])
 
     def test_gpio_setup_attribute_errors(self):
         """Test that GPIO setup handles AttributeError gracefully."""
@@ -302,9 +292,7 @@ class TestFanController(unittest.TestCase):
     @patch("fan_control.time.sleep")
     @patch("fan_control.read_cpu_temp")
     @patch("fan_control.sys.exit")
-    def test_signal_handler_execution(
-        self, mock_exit, mock_read_temp, mock_sleep, mock_signal
-    ):
+    def test_signal_handler_execution(self, mock_exit, mock_read_temp, mock_sleep, mock_signal):
         """Test that signal handler actually calls stop() and sys.exit()."""
         mock_read_temp.return_value = 50.0
 

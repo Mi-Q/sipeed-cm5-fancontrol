@@ -62,9 +62,7 @@ class TestReadTempSysfs(unittest.TestCase):
         """Test successful temperature reading via sysfs."""
         temp = read_temp_sysfs()
         self.assertEqual(temp, 45.5)
-        mock_file.assert_called_once_with(
-            "/sys/class/thermal/thermal_zone0/temp", "r", encoding="utf-8"
-        )
+        mock_file.assert_called_once_with("/sys/class/thermal/thermal_zone0/temp", "r", encoding="utf-8")
 
     @patch("builtins.open", side_effect=FileNotFoundError)
     def test_file_not_found(self, mock_file):

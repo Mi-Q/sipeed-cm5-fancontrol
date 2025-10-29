@@ -101,9 +101,11 @@ class TestTempHandler(unittest.TestCase):
         handler.path = "/temp"
 
         # Mock the response methods
-        with patch.object(handler, "send_response") as mock_send_response, patch.object(
-            handler, "send_header"
-        ), patch.object(handler, "end_headers") as mock_end_headers:
+        with (
+            patch.object(handler, "send_response") as mock_send_response,
+            patch.object(handler, "send_header"),
+            patch.object(handler, "end_headers") as mock_end_headers,
+        ):
 
             handler.do_GET()
 
@@ -123,9 +125,11 @@ class TestTempHandler(unittest.TestCase):
         handler.wfile = BytesIO()
         handler.path = "/temp"
 
-        with patch.object(handler, "send_response") as mock_send_response, patch.object(
-            handler, "send_header"
-        ), patch.object(handler, "end_headers"):
+        with (
+            patch.object(handler, "send_response") as mock_send_response,
+            patch.object(handler, "send_header"),
+            patch.object(handler, "end_headers"),
+        ):
 
             handler.do_GET()
 
@@ -140,9 +144,11 @@ class TestTempHandler(unittest.TestCase):
         handler.wfile = BytesIO()
         handler.path = "/metrics"
 
-        with patch.object(handler, "send_response") as mock_send_response, patch.object(
-            handler, "send_header"
-        ), patch.object(handler, "end_headers") as mock_end_headers:
+        with (
+            patch.object(handler, "send_response") as mock_send_response,
+            patch.object(handler, "send_header"),
+            patch.object(handler, "end_headers") as mock_end_headers,
+        ):
 
             handler.do_GET()
 
@@ -162,9 +168,7 @@ class TestTempHandler(unittest.TestCase):
         handler.wfile = BytesIO()
         handler.path = "/metrics"
 
-        with patch.object(handler, "send_response") as mock_send_response, patch.object(
-            handler, "end_headers"
-        ):
+        with patch.object(handler, "send_response") as mock_send_response, patch.object(handler, "end_headers"):
 
             handler.do_GET()
 
@@ -176,9 +180,7 @@ class TestTempHandler(unittest.TestCase):
         handler.wfile = BytesIO()
         handler.path = "/invalid"
 
-        with patch.object(handler, "send_response") as mock_send_response, patch.object(
-            handler, "end_headers"
-        ):
+        with patch.object(handler, "send_response") as mock_send_response, patch.object(handler, "end_headers"):
 
             handler.do_GET()
 
@@ -210,9 +212,7 @@ class TestMainFunction(unittest.TestCase):
             # Should create server with default bind and port
             mock_server.assert_called_once_with(("0.0.0.0", 8080), TempHandler)
             # Should log startup message
-            mock_logger.info.assert_any_call(
-                "Temperature exporter listening on %s:%d", "0.0.0.0", 8080
-            )
+            mock_logger.info.assert_any_call("Temperature exporter listening on %s:%d", "0.0.0.0", 8080)
             # Should log shutdown on KeyboardInterrupt
             mock_logger.info.assert_any_call("Shutting down")
 
