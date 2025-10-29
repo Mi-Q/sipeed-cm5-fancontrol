@@ -97,9 +97,7 @@ def load_config(
             "fan_curve": section.get("FAN_CURVE", "exponential").lower(),
             "step_zones": section.get("STEP_ZONES", "35:0,45:30,55:60,65:100"),
             "step_hysteresis": float(section.get("STEP_HYSTERESIS", "2")),
-            "fan_min_operating_speed": float(
-                section.get("FAN_MIN_OPERATING_SPEED", "10")
-            ),
+            "fan_min_operating_speed": float(section.get("FAN_MIN_OPERATING_SPEED", "10")),
             "fan_stop_temp": float(section.get("FAN_STOP_TEMP", "20")),
         }
     except Exception as e:
@@ -176,9 +174,7 @@ class DummyPWM:
             duty (float): Initial duty cycle percentage
         """
         self._duty = duty
-        logger.info(
-            "[DummyPWM] start duty=%.1f on pin %s freq %s", duty, self.pin, self.freq
-        )
+        logger.info("[DummyPWM] start duty=%.1f on pin %s freq %s", duty, self.pin, self.freq)
 
     def change_duty_cycle(self, duty):
         """Change PWM duty cycle.
@@ -264,9 +260,7 @@ def import_gpio(dry_run: bool):
 
         return GPIO
     except ImportError:
-        logger.warning(
-            "RPi.GPIO not available, falling back to DummyGPIO (dry-run mode)"
-        )
+        logger.warning("RPi.GPIO not available, falling back to DummyGPIO (dry-run mode)")
         return DummyGPIO()
 
 
@@ -342,9 +336,7 @@ def read_remote_temp_ssh(target: str, timeout: int = 5) -> Optional[float]:
         "/usr/bin/vcgencmd measure_temp",
     ]
     try:
-        out = subprocess.check_output(
-            cmd_vcgencmd, stderr=subprocess.DEVNULL, timeout=timeout + 2
-        )
+        out = subprocess.check_output(cmd_vcgencmd, stderr=subprocess.DEVNULL, timeout=timeout + 2)
         s = out.decode("utf-8")
         m = re.search(r"temp=([0-9]+\.?[0-9]*)'C", s)
         if m:
@@ -361,9 +353,7 @@ def read_remote_temp_ssh(target: str, timeout: int = 5) -> Optional[float]:
             "cat /sys/class/thermal/thermal_zone0/temp",
         ]
         try:
-            out = subprocess.check_output(
-                cmd_sysfs, stderr=subprocess.DEVNULL, timeout=timeout + 2
-            )
+            out = subprocess.check_output(cmd_sysfs, stderr=subprocess.DEVNULL, timeout=timeout + 2)
             s = out.decode("utf-8").strip()
             if s:
                 return float(s) / 1000.0
@@ -566,9 +556,7 @@ class FanController:
             zones.sort(key=lambda x: x[0])  # Sort by temperature
             logger.info("Parsed step zones: %s", zones)
         except Exception as e:
-            logger.error(
-                "Error parsing step zones '%s': %s, using defaults", zones_str, e
-            )
+            logger.error("Error parsing step zones '%s': %s, using defaults", zones_str, e)
             zones = [(35, 0), (45, 30), (55, 60), (65, 100)]
         return zones
 
@@ -606,9 +594,7 @@ class FanController:
         # Check if we should move to a lower zone (temperature falling)
         for i in range(self.current_step_index - 1, -1, -1):
             if temp_c < (
-                self.step_zones[i + 1][0] - self.step_hysteresis
-                if i + 1 < len(self.step_zones)
-                else float("inf")
+                self.step_zones[i + 1][0] - self.step_hysteresis if i + 1 < len(self.step_zones) else float("inf")
             ):
                 new_index = i
             else:
@@ -744,11 +730,7 @@ class FanController:
             with ThreadPoolExecutor(max_workers=min(8, len(self.peers))) as ex:
                 futures = {
                     ex.submit(
-                        (
-                            read_remote_temp_ssh
-                            if self.remote_method == "ssh"
-                            else read_remote_temp_http
-                        ),
+                        (read_remote_temp_ssh if self.remote_method == "ssh" else read_remote_temp_http),
                         p,
                         self.remote_timeout,
                     ): p
@@ -767,10 +749,7 @@ class FanController:
         self.last_temps = temps
 
         # Log all individual temperatures
-        temp_strs = [
-            f"{host}={temp:.1f}°C" if temp else f"{host}=N/A"
-            for host, temp in temps.items()
-        ]
+        temp_strs = [f"{host}={temp:.1f}°C" if temp else f"{host}=N/A" for host, temp in temps.items()]
         logger.info("Temperatures: %s", ", ".join(temp_strs))
 
         # compute aggregate temperature used to decide fan speed
@@ -852,14 +831,10 @@ def parse_args():
     Returns:
         argparse.Namespace: Parsed arguments
     """
-    p = argparse.ArgumentParser(
-        description="Sipeed CM5 fan controller for Raspberry Pi"
-    )
+    p = argparse.ArgumentParser(description="Sipeed CM5 fan controller for Raspberry Pi")
     p.add_argument("--pin", type=int, default=DEFAULT_PIN, help="GPIO pin (BCM) to use")
     p.add_argument("--freq", type=int, default=DEFAULT_FREQ, help="PWM frequency")
-    p.add_argument(
-        "--poll", type=int, default=DEFAULT_POLL_SECONDS, help="Poll interval seconds"
-    )
+    p.add_argument("--poll", type=int, default=DEFAULT_POLL_SECONDS, help="Poll interval seconds")
     p.add_argument(
         "--min-temp",
         type=float,
@@ -872,9 +847,7 @@ def parse_args():
         default=DEFAULT_MAX_TEMP,
         help="Temperature (C) at which 100%% duty is used",
     )
-    p.add_argument(
-        "--min-duty", type=float, default=DEFAULT_MIN_DUTY, help="Minimum duty percent"
-    )
+    p.add_argument("--min-duty", type=float, default=DEFAULT_MIN_DUTY, help="Minimum duty percent")
     p.add_argument(
         "--dry-run",
         action="store_true",
@@ -905,9 +878,7 @@ def parse_args():
         default="max",
         help="Aggregate mode for peer temps",
     )
-    p.add_argument(
-        "--remote-timeout", type=int, default=5, help="Timeout seconds for remote polls"
-    )
+    p.add_argument("--remote-timeout", type=int, default=5, help="Timeout seconds for remote polls")
     p.add_argument(
         "--status-port",
         type=int,
@@ -971,18 +942,14 @@ def main():
                 with open(peers_config_file, "r") as f:
                     peers_content = f.read().strip()
                     if peers_content:
-                        static_peers = [
-                            p.strip() for p in peers_content.split(",") if p.strip()
-                        ]
+                        static_peers = [p.strip() for p in peers_content.split(",") if p.strip()]
                         logger.info(
                             "Loaded %d peers from %s",
                             len(static_peers),
                             peers_config_file,
                         )
             except Exception as e:
-                logger.warning(
-                    "Failed to read peers config file %s: %s", peers_config_file, e
-                )
+                logger.warning("Failed to read peers config file %s: %s", peers_config_file, e)
 
     # Add Kubernetes discovery if enabled
     if args.k8s_discovery:
@@ -1012,9 +979,7 @@ def main():
     # Start status HTTP server if enabled
     status_server = None
     if args.status_port > 0:
-        status_server = StatusServer(
-            controller, port=args.status_port, bind=args.status_bind
-        )
+        status_server = StatusServer(controller, port=args.status_port, bind=args.status_bind)
         status_server.start()
 
     try:

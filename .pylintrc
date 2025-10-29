@@ -1,0 +1,39 @@
+[MAIN]
+# Minimum score for pylint to pass (default 10.0)
+fail-under=8.5
+
+[FORMAT]
+# Maximum number of characters on a single line
+max-line-length=120
+
+[MESSAGES CONTROL]
+# Disable duplicate code check between these small utility files
+disable=
+    duplicate-code,
+    # RPi.GPIO import will fail on non-RPi systems, which is expected
+    import-error,
+    # Some patterns require more arguments/attributes for complete functionality
+    too-many-arguments,
+    too-many-positional-arguments,
+    too-many-instance-attributes,
+    # Consider-using-from-import conflicts with conditional imports
+    consider-using-from-import,
+    # HTTP handler methods must be named do_GET, do_POST, etc.
+    invalid-name,
+    # Some HTTP/network code has broad exception handling by design
+    broad-exception-caught,
+    # File encoding is intentional for compatibility
+    unspecified-encoding,
+    # Using "format" as parameter name for logging format strings
+    redefined-builtin,
+    # Pass statements used for documentation/clarity
+    unnecessary-pass,
+    # Using 'in' not always clearer for two comparisons
+    consider-using-in,
+    # Import outside toplevel needed for conditional GPIO import
+    import-outside-toplevel
+
+[DESIGN]
+# Allow more complexity for this embedded/hardware control application
+max-args=10
+max-attributes=20
