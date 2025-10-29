@@ -268,7 +268,7 @@ if systemctl is-active --quiet "$SERVICE_NAME.service"; then
         ELAPSED=$((ELAPSED + 1))
     done
     
-    if [ $ELAPSED -ge $TIMEOUT ]; then
+    if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
         echo -e "${YELLOW}Warning: Port $PORT_TO_CHECK still in use after ${TIMEOUT}s, proceeding anyway${NC}"
     fi
 fi
