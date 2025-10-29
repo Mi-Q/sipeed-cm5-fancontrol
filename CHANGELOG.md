@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Installation script (install.sh) improvements**
-  - Fixed "Address already in use" error during temp exporter and fan control service reinstall
+  - Fixed "Address already in use" error during temperature exporter and fan control service reinstall
   - Now properly stops service and waits for port to be released before restarting
   - Ensures clean reinstallation without port conflicts
 - **Simplified installation process**
