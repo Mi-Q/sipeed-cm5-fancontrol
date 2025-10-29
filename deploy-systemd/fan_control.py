@@ -239,6 +239,145 @@ class DummyGPIO:
         logger.info("[DummyGPIO] cleanup")
 
 
+class LGPIOWrapper:
+    """Wrapper for lgpio to provide RPi.GPIO-compatible interface.
+
+    lgpio is the modern GPIO library for Raspberry Pi that works in containers
+    on RPi 5/CM5. This wrapper provides compatibility with the RPi.GPIO API.
+    """
+
+    BCM = "BCM"
+    OUT = "OUT"
+
+    def __init__(self):
+        """Initialize lgpio wrapper."""
+        self._chip = None
+        self._pwm_instances = {}
+
+    def setmode(self, m):
+        """Set GPIO mode (BCM/BOARD).
+
+        Args:
+            m (str): GPIO mode identifier
+        """
+        import lgpio
+
+        if self._chip is None:
+            # Open GPIO chip (gpiochip4 for RPi 5/CM5)
+            self._chip = lgpio.gpiochip_open(4)
+        logger.info("[lgpio] setmode %s (chip opened)", m)
+
+    def setup(self, pin, mode):
+        """Configure GPIO pin mode.
+
+        Args:
+            pin (int): GPIO pin number (BCM numbering)
+            mode (str): Pin mode (IN/OUT)
+        """
+        import lgpio
+
+        if self._chip is None:
+            self._chip = lgpio.gpiochip_open(4)
+
+        if mode == self.OUT:
+            lgpio.gpio_claim_output(self._chip, pin)
+            logger.info("[lgpio] setup pin=%s mode=%s", pin, mode)
+
+    def pwm(self, pin, freq):
+        """Create PWM instance for given pin.
+
+        Args:
+            pin (int): GPIO pin number
+            freq (int): PWM frequency in Hz
+
+        Returns:
+            LGPIOPWMWrapper: PWM controller instance
+        """
+        pwm = LGPIOPWMWrapper(self._chip, pin, freq)
+        self._pwm_instances[pin] = pwm
+        return pwm
+
+    # Alias for RPi.GPIO compatibility
+    PWM = pwm
+
+    def cleanup(self):
+        """Clean up GPIO resources."""
+        import lgpio
+
+        # Stop all PWM instances
+        for pwm in self._pwm_instances.values():
+            pwm.stop()
+        # Close chip
+        if self._chip is not None:
+            lgpio.gpiochip_close(self._chip)
+            self._chip = None
+        logger.info("[lgpio] cleanup")
+
+
+class LGPIOPWMWrapper:
+    """Wrapper for lgpio PWM to provide RPi.GPIO.PWM-compatible interface."""
+
+    def __init__(self, chip, pin, freq):
+        """Initialize PWM wrapper.
+
+        Args:
+            chip: lgpio chip handle
+            pin (int): GPIO pin number
+            freq (int): PWM frequency in Hz
+        """
+        self._chip = chip
+        self._pin = pin
+        self._freq = freq
+        self._duty_cycle = 0
+        self._running = False
+
+    def start(self, duty_cycle):
+        """Start PWM with given duty cycle.
+
+        Args:
+            duty_cycle (float): Duty cycle percentage (0-100)
+        """
+        import lgpio
+
+        self._duty_cycle = duty_cycle
+        # Start PWM using tx_pwm (hardware PWM on supported pins)
+        # For GPIO 13, we can use hardware PWM channel
+        try:
+            lgpio.tx_pwm(self._chip, self._pin, self._freq, duty_cycle)
+            self._running = True
+            logger.debug("[lgpio] PWM started on pin %s: freq=%sHz duty=%.1f%%", self._pin, self._freq, duty_cycle)
+        except Exception as e:
+            logger.error("[lgpio] PWM start failed: %s", e)
+
+    def ChangeDutyCycle(self, duty_cycle):
+        """Change PWM duty cycle.
+
+        Args:
+            duty_cycle (float): New duty cycle percentage (0-100)
+        """
+        import lgpio
+
+        if self._running:
+            self._duty_cycle = duty_cycle
+            try:
+                lgpio.tx_pwm(self._chip, self._pin, self._freq, duty_cycle)
+                logger.debug("[lgpio] PWM duty cycle changed to %.1f%%", duty_cycle)
+            except Exception as e:
+                logger.error("[lgpio] PWM duty cycle change failed: %s", e)
+
+    def stop(self):
+        """Stop PWM output."""
+        import lgpio
+
+        if self._running:
+            try:
+                lgpio.tx_pwm(self._chip, self._pin, self._freq, 0)
+                self._running = False
+                logger.debug("[lgpio] PWM stopped on pin %s", self._pin)
+            except Exception as e:
+                logger.error("[lgpio] PWM stop failed: %s", e)
+
+
 def import_gpio(dry_run: bool):
     """Import GPIO module or return dummy implementation.
 
@@ -246,19 +385,41 @@ def import_gpio(dry_run: bool):
         dry_run (bool): If True, always return dummy implementation
 
     Returns:
-        module: RPi.GPIO module or DummyGPIO instance
+        module: RPi.GPIO module, LGPIOWrapper, or DummyGPIO instance
 
     Note:
-        When not in dry-run mode, attempts to import RPi.GPIO first
+        When not in dry-run mode:
+        - In Kubernetes: prefers lgpio (works in containers on RPi 5/CM5)
+        - In systemd: prefers RPi.GPIO (traditional approach)
     """
     if dry_run:
         return DummyGPIO()
+
+    # Detect if running in Kubernetes
+    in_kubernetes = os.path.exists("/var/run/secrets/kubernetes.io/serviceaccount")
+
+    if in_kubernetes:
+        # In Kubernetes: prefer lgpio (works in containers on RPi 5/CM5)
+        try:
+            import lgpio  # noqa: F401
+
+            logger.info("Kubernetes environment detected, using lgpio")
+            return LGPIOWrapper()
+        except ImportError:
+            logger.warning("lgpio not available in Kubernetes environment, falling back to RPi.GPIO")
+
+    # Try RPi.GPIO (works in systemd on all RPi models)
     try:
-        # Import the GPIO module using the module-level name to match common usage
-        # and avoid namespace issues (returns module object as GPIO)
         import RPi.GPIO as GPIO
 
-        return GPIO
+        # Test if GPIO can actually be initialized
+        try:
+            GPIO.setmode(GPIO.BCM)
+            logger.info("Using RPi.GPIO")
+            return GPIO
+        except (RuntimeError, ValueError) as e:
+            logger.warning("RPi.GPIO cannot access hardware (%s), falling back to DummyGPIO", e)
+            return DummyGPIO()
     except ImportError:
         logger.warning("RPi.GPIO not available, falling back to DummyGPIO (dry-run mode)")
         return DummyGPIO()
@@ -525,15 +686,16 @@ class FanController:
         try:
             # If module is class-like (DummyGPIO), follow its API
             self.GPIO.setmode(self.GPIO.BCM)
+        except AttributeError:
+            # Some real GPIO modules expect module-level calls
+            pass
+
+        # create PWM instance
+        try:
             self.GPIO.setup(self.pin, self.GPIO.OUT)
             self.pwm = self.GPIO.PWM(self.pin, self.freq)
-        except (AttributeError, RuntimeError, ValueError) as e:
-            # GPIO hardware not accessible or DummyGPIO, use dummy PWM
-            if not isinstance(e, AttributeError):
-                logger.warning("GPIO hardware not accessible (%s), using DummyPWM", e)
-            self.GPIO = DummyGPIO()
-            self.GPIO.setmode(self.GPIO.BCM)
-            self.GPIO.setup(self.pin, self.GPIO.OUT)
+        except AttributeError:
+            # If module values are functions, call accordingly
             self.pwm = DummyPWM(self.pin, self.freq)
 
     def _parse_step_zones(self, zones_str: str) -> List[tuple]:

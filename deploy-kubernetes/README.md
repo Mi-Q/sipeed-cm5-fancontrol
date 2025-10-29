@@ -168,7 +168,9 @@ The deployment consists of:
 
 **Hardware Access Requirements:**
 - The fan controller pod runs in privileged mode to access GPIO
-- Host `/sys` and `/dev` directories are mounted into the container
+- Uses **lgpio** library (modern GPIO library that works in containers on RPi 5/CM5)
+- Automatically detects Kubernetes environment and uses lgpio instead of RPi.GPIO
+- On systemd deployments, continues using RPi.GPIO (traditional approach)
 - `hostPID: true` ensures proper hardware device access
 - These settings allow the pod to control the PWM fan just like running on bare metal
 
