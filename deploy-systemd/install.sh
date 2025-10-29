@@ -255,21 +255,44 @@ if systemctl is-active --quiet "$SERVICE_NAME.service"; then
         exit 1
     fi
     
-    # Wait for port to be released with timeout
-    echo "Waiting for port $PORT_TO_CHECK to be released..."
-    TIMEOUT=10
+    # Wait for service to become inactive and port to be released
+    echo "Waiting for service to stop and port $PORT_TO_CHECK to be released..."
+    TIMEOUT=30
     ELAPSED=0
+    SERVICE_INACTIVE=false
+    PORT_FREE=false
+    
     while (( ELAPSED < TIMEOUT )); do
+        # Check if service is inactive
+        if ! systemctl is-active --quiet "$SERVICE_NAME.service"; then
+            SERVICE_INACTIVE=true
+        fi
+        
+        # Check if port is free
         if ! ss -tlnH "sport = :$PORT_TO_CHECK" 2>/dev/null | grep -q ":$PORT_TO_CHECK"; then
-            echo "Port $PORT_TO_CHECK is now available"
+            PORT_FREE=true
+        fi
+        
+        # Exit loop if both conditions are met
+        if [ "$SERVICE_INACTIVE" = true ] && [ "$PORT_FREE" = true ]; then
+            echo "Service inactive and port $PORT_TO_CHECK is now available (after ${ELAPSED}s)"
             break
         fi
+        
         sleep 1
         ELAPSED=$((ELAPSED + 1))
     done
     
+    # Report timeout warnings
     if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
-        echo -e "${YELLOW}Warning: Port $PORT_TO_CHECK still in use after ${TIMEOUT}s, proceeding anyway${NC}"
+        if [ "$SERVICE_INACTIVE" != true ]; then
+            echo -e "${RED}Error: Service $SERVICE_NAME still active after ${TIMEOUT}s${NC}"
+            exit 1
+        fi
+        if [ "$PORT_FREE" != true ]; then
+            echo -e "${RED}Error: Port $PORT_TO_CHECK still in use after ${TIMEOUT}s${NC}"
+            exit 1
+        fi
     fi
 fi
 
