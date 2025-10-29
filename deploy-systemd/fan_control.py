@@ -258,7 +258,13 @@ def import_gpio(dry_run: bool):
         # and avoid namespace issues (returns module object as GPIO)
         import RPi.GPIO as GPIO
 
-        return GPIO
+        # Test if GPIO can actually be initialized (fails in containers without proper access)
+        try:
+            GPIO.setmode(GPIO.BCM)
+            return GPIO
+        except (RuntimeError, ValueError) as e:
+            logger.warning("RPi.GPIO cannot access hardware (%s), falling back to DummyGPIO", e)
+            return DummyGPIO()
     except ImportError:
         logger.warning("RPi.GPIO not available, falling back to DummyGPIO (dry-run mode)")
         return DummyGPIO()

@@ -16,7 +16,7 @@ spec:
       labels:
         app.kubernetes.io/name: sipeed-fan-controller
     spec:
-      hostNetwork: false
+      hostNetwork: true
       hostPID: true
       serviceAccountName: sipeed-fan-controller
       nodeSelector:
