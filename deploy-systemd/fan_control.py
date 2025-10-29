@@ -731,6 +731,23 @@ def parse_args():
         default="0.0.0.0",
         help="Bind address for status HTTP server",
     )
+    p.add_argument(
+        "--k8s-discovery",
+        action="store_true",
+        help="Enable Kubernetes auto-discovery of temp exporter pods",
+    )
+    p.add_argument(
+        "--k8s-namespace",
+        type=str,
+        default=None,
+        help="Kubernetes namespace for discovery (default: current namespace)",
+    )
+    p.add_argument(
+        "--k8s-label-selector",
+        type=str,
+        default="app.kubernetes.io/name=sipeed-temp-exporter",
+        help="Label selector for discovering temp exporter pods",
+    )
     return p.parse_args()
 
 
@@ -752,9 +769,33 @@ def main():
         min_duty=args.min_duty,
         simulate_temp=args.simulate_temp,
     )
-    # wire CLI options for remote polling
+
+    # Parse static peers from command line
+    static_peers = []
     if args.peers:
-        controller.peers = [p.strip() for p in args.peers.split(",") if p.strip()]
+        static_peers = [p.strip() for p in args.peers.split(",") if p.strip()]
+
+    # Add Kubernetes discovery if enabled
+    if args.k8s_discovery:
+        try:
+            from k8s_discovery import get_peers_with_discovery
+
+            all_peers = get_peers_with_discovery(
+                static_peers=static_peers,
+                enable_k8s_discovery=True,
+                k8s_namespace=args.k8s_namespace,
+                k8s_label_selector=args.k8s_label_selector,
+                k8s_port=8080,
+            )
+            controller.peers = all_peers
+            logger.info("Using Kubernetes discovery: %d total peers", len(all_peers))
+        except ImportError as e:
+            logger.warning("Kubernetes discovery failed: %s", e)
+            logger.warning("Falling back to static peers")
+            controller.peers = static_peers
+    else:
+        controller.peers = static_peers
+
     controller.remote_method = args.remote_method
     controller.aggregate = args.aggregate
     controller.remote_timeout = args.remote_timeout

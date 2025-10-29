@@ -7,20 +7,40 @@ This directory contains the Kubernetes (k3s) deployment configuration using Helm
 - `helm/` - Helm chart for deploying both the fan controller and temperature exporter
 - `Dockerfile` - Fan controller container image
 - `Dockerfile.exporter` - Temperature exporter container image
+- `k8s_discovery.py` - Kubernetes-specific peer discovery module
 - `install.sh` - Helper script to install the Helm chart
+
+## Key Differences from Systemd Deployment
+
+**Kubernetes deployment** uses dynamic peer discovery:
+- No need to manually configure peer addresses
+- Automatically discovers all temperature exporter pods via Kubernetes API
+- Adapts to nodes being added/removed from cluster
+- Uses RBAC and ServiceAccount for API access
+
+**Systemd deployment** uses static peer configuration:
+- Peers defined at installation time via `install.sh`
+- Static list in systemd service file
+- See `../deploy-systemd/README.md` for details
+
+Both deployments share the same core `fan_control.py` logic, which gracefully handles both modes.
 
 ## Features
 
 ### Fan Controller
 - Automatic temperature-based fan speed control
+- **Kubernetes-native peer discovery** - Automatically discovers all temp exporter pods
+- No manual peer configuration needed - dynamically adapts to cluster changes
 - Multi-node temperature aggregation
 - HTTP status endpoint at port 8081 for monitoring
 - Real-time status including all node temperatures, aggregate temp, and fan duty cycle
+- RBAC-based Kubernetes API access for pod discovery
 
 ### Temperature Exporter
 - Exposes node temperature via HTTP on port 8080
 - Prometheus-compatible metrics endpoint
 - Lightweight HTTP service
+- Runs on all worker nodes (excludes master)
 
 ## Prerequisites
 
@@ -86,40 +106,54 @@ kubectl get nodes -l node-role.kubernetes.io/master=true
 
 The deployment can be customized through the `helm/values.yaml` file:
 
+### Automatic Peer Discovery (Default)
+
+The fan controller uses **Kubernetes API-based peer discovery** by default. No manual configuration needed!
+
+**How it works:**
+1. Fan controller pod uses a ServiceAccount with permissions to list pods
+2. Queries Kubernetes API for pods matching label: `app.kubernetes.io/name=sipeed-temp-exporter`
+3. Automatically discovers all running temp exporter pods in the namespace
+4. Polls each discovered pod's IP address directly
+5. Dynamically adapts when nodes are added/removed
+
+**RBAC Resources:**
+- `ServiceAccount`: `sipeed-fan-controller`
+- `Role`: Grants `list` and `get` permissions for pods
+- `RoleBinding`: Links ServiceAccount to Role
+
+This is enabled by default with the `--k8s-discovery` flag in `values.yaml`:
+```yaml
+controller:
+  args:
+    - --remote-method=http
+    - --k8s-discovery  # Auto-discovers all temp exporter pods
+    - --status-port=8081
+```
+
+### Manual Peer Configuration (Optional)
+
+You can override auto-discovery with static peers if needed:
+
+```yaml
+controller:
+  args:
+    - --remote-method=http
+    - --peers=node2,node3,node4  # Static peer list
+    - --status-port=8081
+```
+
 ### Fan Controller Settings
 - Image repository and tag
 - Resource limits and requests
-- Temperature polling configuration
-  - `--peers`: Comma-separated list of hostnames, IPs, or URLs (e.g., `node2,node3,192.168.1.104`)
-  - `--remote-method`: Polling method (`http` or `ssh`)
-  - Peers can be simple hostnames - full URLs are constructed automatically
-- Security context
+- Discovery method (auto or manual)
+- Security context (privileged mode for GPIO access)
 
 ### Temperature Exporter Settings
 - Image repository and tag
 - Resource limits and requests
 - Service configuration
 - Port settings
-
-### Example Peer Configuration
-
-The `--peers` argument accepts flexible formats:
-```yaml
-# Simple hostnames (automatically expanded to http://hostname:8080/temp)
-args:
-  - --remote-method=http
-  - --peers=node2,node3,node4
-
-# Service names in Kubernetes
-args:
-  - --remote-method=http
-  - --peers=sipeed-temp-exporter
-
-# Full URLs (used as-is)
-args:
-  - --remote-method=http
-  - --peers=http://node2:8080/temp,http://node3:8080/temp
-```
 
 ## Architecture
 
