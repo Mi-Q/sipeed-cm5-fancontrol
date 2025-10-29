@@ -1,0 +1,42 @@
+# Default values for sipeed-cm5-fancontrol
+# This is a YAML-formatted file.
+
+controller:
+  image:
+    repository: ghcr.io/mi-q/sipeed-cm5-fancontrol
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  args:
+    - --remote-method=http
+    - --peers=127.0.0.1
+    - --status-port=8081
+    - --status-bind=0.0.0.0
+  service:
+    port: 8081
+  securityContext:
+    privileged: true
+
+exporter:
+  image:
+    repository: ghcr.io/mi-q/sipeed-temp-exporter
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  args:
+    - --bind=0.0.0.0
+    - --port=8080
+  service:
+    port: 8080

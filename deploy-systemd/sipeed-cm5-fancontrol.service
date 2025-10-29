@@ -1,0 +1,15 @@
+[Unit]
+Description=Sipeed CM5 Fan Controller
+After=multi-user.target
+
+[Service]
+Type=simple
+# Run as root to allow GPIO access
+User=root
+WorkingDirectory=/opt/sipeed-fancontrol
+ExecStart=/usr/bin/python3 /opt/sipeed-fancontrol/fan_control.py --status-port 8081
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+"""
+CLI tool to query Sipeed CM5 fan controller status.
+
+Usage:
+    cm5fan                    # Query localhost
+    cm5fan <host>             # Query specific host
+    cm5fan --json             # Output raw JSON
+"""
+
+import argparse
+import json
+import sys
+import urllib.request
+from urllib.error import URLError
+
+
+def format_temp(temp):
+    """Format temperature value."""
+    if temp is None:
+        return "N/A"
+    return f"{temp:.1f}°C"
+
+
+def print_status(status, json_output=False):
+    """Print status in human-readable or JSON format."""
+    if json_output:
+        print(json.dumps(status, indent=2))
+        return
+
+    print("=" * 60)
+    print("Sipeed CM5 Fan Controller Status")
+    print("=" * 60)
+    print()
+    
+    print(f"Mode:             {status.get('mode', 'N/A')}")
+    print(f"Running:          {status.get('running', 'N/A')}")
+    print(f"Fan Duty Cycle:   {status.get('fan_duty_percent', 'N/A')}%")
+    print()
+    
+    # Temperatures
+    print("Temperatures:")
+    temps = status.get('temperatures', {})
+    if temps:
+        for host, temp in sorted(temps.items()):
+            print(f"  {host:15s}: {format_temp(temp)}")
+    else:
+        print("  No temperature data")
+    print()
+    
+    # Aggregation
+    agg_temp = status.get('aggregate_temp_celsius')
+    agg_method = status.get('aggregate_method', 'N/A')
+    print(f"Aggregate Method: {agg_method}")
+    print(f"Aggregate Temp:   {format_temp(agg_temp)}")
+    print()
+    
+    # Configuration
+    config = status.get('config', {})
+    print("Configuration:")
+    if status.get('mode') == 'manual':
+        print(f"  Manual Speed:   {config.get('manual_speed', 'N/A')}%")
+    else:
+        print(f"  Min Temp:       {format_temp(config.get('min_temp'))}")
+        print(f"  Max Temp:       {format_temp(config.get('max_temp'))}")
+        print(f"  Min Duty:       {config.get('min_duty', 'N/A')}%")
+    print()
+    
+    # Peers
+    peers = status.get('peers', [])
+    if peers:
+        print(f"Polling Peers:    {', '.join(peers)}")
+        print(f"Remote Method:    {status.get('remote_method', 'N/A')}")
+    print()
+
+
+def main():
+    """Main entry point."""
+    parser = argparse.ArgumentParser(
+        description="Query Sipeed CM5 fan controller status"
+    )
+    parser.add_argument(
+        "host",
+        nargs="?",
+        default="localhost",
+        help="Hostname or IP (default: localhost)",
+    )
+    parser.add_argument(
+        "-p", "--port",
+        type=int,
+        default=8081,
+        help="Status server port (default: 8081)",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output raw JSON",
+    )
+    args = parser.parse_args()
+
+    url = f"http://{args.host}:{args.port}/status"
+    
+    try:
+        with urllib.request.urlopen(url, timeout=5) as response:
+            data = response.read()
+            status = json.loads(data)
+            print_status(status, json_output=args.json)
+            return 0
+    except URLError as e:
+        print(f"Error: Could not connect to {url}", file=sys.stderr)
+        print(f"Details: {e}", file=sys.stderr)
+        print("\nMake sure the fan controller is running with --status-port enabled", file=sys.stderr)
+        return 1
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON response from {url}", file=sys.stderr)
+        print(f"Details: {e}", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        print("\nInterrupted", file=sys.stderr)
+        return 130
+
+
+if __name__ == "__main__":
+    sys.exit(main())
