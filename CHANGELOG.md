@@ -144,5 +144,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dry-run mode for testing without GPIO hardware
 - Basic logging and error handling
 
-[Unreleased]: https://github.com/Mi-Q/sipeed-cm5-fancontrol/compare/v0.1.0...HEAD
+## [0.2.0] - 2025-10-29
+
+This is the first production-ready release with comprehensive features for both systemd and Kubernetes deployments.
+
+### Highlights
+- Complete Kubernetes deployment with Helm charts and ConfigMap configuration
+- Automatic GPIO library selection (lgpio for containers, RPi.GPIO for systemd)
+- Dynamic peer discovery and rediscovery in Kubernetes
+- Enhanced monitoring with fan duty cycle logging
+- Comprehensive documentation and examples
+- 98% test coverage with extensive unit tests
+- CI/CD optimizations for faster builds
+
+See "Unreleased" section above for detailed feature list.
+
+[Unreleased]: https://github.com/Mi-Q/sipeed-cm5-fancontrol/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Mi-Q/sipeed-cm5-fancontrol/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Mi-Q/sipeed-cm5-fancontrol/releases/tag/v0.1.0
