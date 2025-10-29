@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sipeed-fan-controller
+  labels:
+    app.kubernetes.io/name: sipeed-fan-controller
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: sipeed-fan-controller
+subjects:
+- kind: ServiceAccount
+  name: sipeed-fan-controller
+  namespace: {{ .Release.Namespace }}

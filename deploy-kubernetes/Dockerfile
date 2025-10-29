@@ -6,12 +6,16 @@ LABEL org.opencontainers.image.licenses="MIT"
 
 WORKDIR /app
 
+# Install Python dependencies including kubernetes client
+RUN pip install --no-cache-dir kubernetes
+
 # Minimal runtime deps; gpio libs can be provided by the host when running privileged
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 COPY deploy-systemd/fan_control.py /app/
+COPY deploy-kubernetes/k8s_discovery.py /app/
 
 ENV PYTHONUNBUFFERED=1
 

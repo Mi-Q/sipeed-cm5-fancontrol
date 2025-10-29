@@ -15,7 +15,7 @@ controller:
       memory: 64Mi
   args:
     - --remote-method=http
-    - --peers=127.0.0.1
+    - --k8s-discovery  # Enable automatic discovery of temp exporter pods
     - --status-port=8081
     - --status-bind=0.0.0.0
   service:

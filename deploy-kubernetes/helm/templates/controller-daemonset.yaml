@@ -18,6 +18,7 @@ spec:
     spec:
       hostNetwork: false
       hostPID: true
+      serviceAccountName: sipeed-fan-controller
       nodeSelector:
         node-role.kubernetes.io/master: "true"
       containers:
