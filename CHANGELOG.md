@@ -8,12 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Reinstallation "Address already in use" errors completely resolved**
+  - Added SO_REUSEADDR socket option to both `temp_exporter.py` and `fan_control.py`
+  - Allows immediate port rebinding even when socket is in TIME_WAIT state
+  - Installation script now uses `systemctl mask` to prevent automatic service restarts
+  - Added `fuser -k` to forcefully kill zombie processes holding ports
+  - Improved wait mechanism: 30-second timeout with per-second checks of service and port status
+  - Script exits with detailed error if service doesn't stop or port isn't freed
+  - Comprehensive cleanup process ensures reliable reinstallation
 - **Installation script (install.sh) improvements**
-  - Fixed "Address already in use" error during temperature exporter and fan control service reinstall
-  - Now properly stops service and waits for port to be released before restarting
-  - Improved wait mechanism: 30-second timeout checking both service status and port availability every second
-  - Script now exits with error if service doesn't stop or port isn't freed within timeout
-  - Ensures clean reinstallation without port conflicts
+  - Added detailed inline documentation explaining each step
+  - Better error messages showing systemctl status and logs on failure
+  - Three-phase stop process: mask → kill → stop for reliable service shutdown
+  - Automatic detection and cleanup of failed systemd states
 - **Simplified installation process**
   - Removed SSH polling option (HTTP-only for easier setup)
   - Eliminates need for SSH key configuration

@@ -1,4 +1,27 @@
 #!/bin/bash
+#
+# Sipeed NanoCluster Fan Control Installation Script
+# 
+# This script installs and configures fan control services for the Sipeed NanoCluster.
+# It supports two types of nodes:
+#   1. Fan Control Node - Controls the fan based on temperatures from all nodes
+#   2. Temperature Provider Node - Exposes temperature readings via HTTP
+#
+# Usage:
+#   sudo ./install.sh              # Interactive installation
+#   sudo ./install.sh --reinstall  # Automatic reinstall/update
+#   sudo ./install.sh --help       # Show help
+#
+# Remote installation:
+#   curl -sSL <url>/install.sh | sudo bash
+#
+# Features:
+#   - Detects existing installations and offers reinstall/reconfigure options
+#   - Properly stops services and waits for ports to be released during reinstall
+#   - Uses systemctl mask to prevent automatic restarts during reinstallation
+#   - Forcefully kills zombie processes that don't release ports
+#   - Validates service starts successfully before completing
+#
 
 set -e
 
@@ -114,25 +137,31 @@ if [ ${#EXISTING_SERVICES[@]} -gt 0 ] || [ -d "$INSTALL_DIR" ]; then
         1)
             echo ""
             echo -e "${YELLOW}Proceeding with reinstall...${NC}"
-            # Stop existing services before reinstalling and wait for cleanup
+            
+            # Stop existing services and ensure clean state before reinstalling
+            # This prevents "Address already in use" errors during reinstallation
             for service in "${EXISTING_SERVICES[@]}"; do
                 echo "Stopping $service..."
-                # Mask the service to completely prevent any start attempts
+                
+                # Step 1: Mask service to prevent any automatic restart attempts by systemd
                 systemctl mask "$service.service" 2>/dev/null || true
-                # Kill any running processes forcefully
+                
+                # Step 2: Forcefully kill any running processes
                 systemctl kill "$service.service" 2>/dev/null || true
+                
+                # Step 3: Stop the service cleanly
                 systemctl stop "$service.service" 2>/dev/null || true
                 
-                # Determine which port to check
+                # Determine which port this service uses
                 if [ "$service" = "sipeed-cm5-fancontrol" ]; then
-                    PORT_TO_CHECK=8081
+                    PORT_TO_CHECK=8081  # Fan control status endpoint
                 elif [ "$service" = "sipeed-temp-exporter" ]; then
-                    PORT_TO_CHECK=8080
+                    PORT_TO_CHECK=8080  # Temperature exporter endpoint
                 else
                     continue
                 fi
                 
-                # Wait for service to stop and port to be released
+                # Wait for service to become inactive and port to be released
                 echo "Waiting for $service to stop completely and port $PORT_TO_CHECK to be released..."
                 TIMEOUT=30
                 ELAPSED=0
@@ -150,13 +179,14 @@ if [ ${#EXISTING_SERVICES[@]} -gt 0 ] || [ -d "$INSTALL_DIR" ]; then
                         PORT_FREE=true
                     fi
                     
-                    # Exit loop if both conditions are met
+                    # Success - both conditions met
                     if [ "$SERVICE_INACTIVE" = true ] && [ "$PORT_FREE" = true ]; then
                         echo "✓ $service stopped and port $PORT_TO_CHECK released (after ${ELAPSED}s)"
                         break
                     fi
                     
-                    # If port still in use after service is inactive, try killing the process
+                    # Handle zombie processes: if service is inactive but port still bound,
+                    # forcefully kill the process holding the port after 5 seconds
                     if [ "$SERVICE_INACTIVE" = true ] && [ "$PORT_FREE" != true ] && [ "$ELAPSED" -gt 5 ]; then
                         echo "Service inactive but port still in use, force-killing process..."
                         fuser -k ${PORT_TO_CHECK}/tcp 2>/dev/null || true
@@ -166,11 +196,10 @@ if [ ${#EXISTING_SERVICES[@]} -gt 0 ] || [ -d "$INSTALL_DIR" ]; then
                     ELAPSED=$((ELAPSED + 1))
                 done
                 
-                # Report timeout errors
+                # Report errors if timeout reached
                 if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
                     if [ "$SERVICE_INACTIVE" != true ]; then
                         echo -e "${RED}Error: Service $service still active after ${TIMEOUT}s${NC}"
-                        # Show what's still running
                         systemctl status "$service.service" --no-pager || true
                         exit 1
                     fi
@@ -182,7 +211,7 @@ if [ ${#EXISTING_SERVICES[@]} -gt 0 ] || [ -d "$INSTALL_DIR" ]; then
                     fi
                 fi
                 
-                # Reset failed state and unmask for fresh installation
+                # Clean up systemd state for fresh installation
                 systemctl reset-failed "$service.service" 2>/dev/null || true
                 systemctl unmask "$service.service" 2>/dev/null || true
             done
@@ -362,10 +391,12 @@ if systemctl is-active --quiet "$SERVICE_NAME.service"; then
 fi
 
 # Enable and start service
+# Note: SO_REUSEADDR is enabled in both fan_control.py and temp_exporter.py
+# to allow immediate port reuse, preventing "Address already in use" errors
 echo "Enabling and starting $SERVICE_NAME service..."
 systemctl enable "$SERVICE_NAME.service"
 
-# Start the service and capture any immediate errors
+# Start the service and capture any immediate startup errors
 if ! systemctl start "$SERVICE_NAME.service" 2>&1; then
     echo ""
     echo -e "${RED}✗ Failed to start service${NC}"
@@ -378,7 +409,7 @@ if ! systemctl start "$SERVICE_NAME.service" 2>&1; then
     exit 1
 fi
 
-# Wait a moment and check if service is still running
+# Verify service is running after a brief startup period
 sleep 2
 if systemctl is-active --quiet "$SERVICE_NAME.service"; then
     echo ""
