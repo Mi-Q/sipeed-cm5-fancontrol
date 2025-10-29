@@ -645,6 +645,15 @@ class FanController:
         self.remote_timeout = 5
         self.aggregate = "max"  # or 'avg'
 
+        # Kubernetes discovery settings
+        self.k8s_discovery_enabled = False
+        self.k8s_static_peers: List[str] = []
+        self.k8s_namespace: Optional[str] = None
+        self.k8s_label_selector: str = "app.kubernetes.io/name=sipeed-temp-exporter"
+        self.k8s_port: int = 8080
+        self._discovery_counter = 0
+        self._discovery_interval = 12  # Rediscover every 12 polling cycles (1 minute with 5s polls)
+
         # Load config file
         self.config_path = config_path or "/etc/sipeed-cm5-fancontrol/fancontrol.conf"
         self.config = load_config(self.config_path)
@@ -856,6 +865,33 @@ class FanController:
         }
         return status
 
+    def _rediscover_peers(self) -> None:
+        """Rediscover Kubernetes peers if discovery is enabled.
+
+        This method is called periodically to update the peer list
+        when pods are restarted or rescheduled with new IPs.
+        """
+        if not self.k8s_discovery_enabled:
+            return
+
+        try:
+            from k8s_discovery import get_peers_with_discovery
+
+            all_peers = get_peers_with_discovery(
+                static_peers=self.k8s_static_peers,
+                enable_k8s_discovery=True,
+                k8s_namespace=self.k8s_namespace,
+                k8s_label_selector=self.k8s_label_selector,
+                k8s_port=self.k8s_port,
+            )
+
+            # Only log if peers changed
+            if set(all_peers) != set(self.peers):
+                logger.info("Peer list updated: %d peers discovered", len(all_peers))
+                self.peers = all_peers
+        except Exception as e:
+            logger.warning("Failed to rediscover peers: %s", e)
+
     def run_once(self) -> Optional[dict]:
         """Execute one iteration of temperature check and fan control.
 
@@ -863,6 +899,13 @@ class FanController:
             Optional[dict]: Dictionary with temperatures and duty cycle,
                 or None on failure
         """
+        # Periodically rediscover Kubernetes peers (every ~1 minute)
+        if self.k8s_discovery_enabled:
+            self._discovery_counter += 1
+            if self._discovery_counter >= self._discovery_interval:
+                self._rediscover_peers()
+                self._discovery_counter = 0
+
         # Check if mode is manual
         if self.mode == "manual":
             duty = self.manual_speed
@@ -909,10 +952,6 @@ class FanController:
         # Store temperatures for status endpoint
         self.last_temps = temps
 
-        # Log all individual temperatures
-        temp_strs = [f"{host}={temp:.1f}°C" if temp else f"{host}=N/A" for host, temp in temps.items()]
-        logger.info("Temperatures: %s", ", ".join(temp_strs))
-
         # compute aggregate temperature used to decide fan speed
         valid_temps = [v for v in temps.values() if v is not None]
         if not valid_temps:
@@ -945,13 +984,18 @@ class FanController:
         # Apply minimum operating speed threshold to avoid dead zone
         duty = self._apply_min_operating_speed(duty, t)
 
+        # Log all individual temperatures with current fan duty cycle
+        temp_strs = [f"{host}={temp:.1f}°C" if temp else f"{host}=N/A" for host, temp in temps.items()]
+        current_duty_str = f"{self.last_duty:.1f}%" if self.last_duty is not None else "N/A"
+        logger.info("Temperatures: %s | Fan: %s", ", ".join(temp_strs), current_duty_str)
+
         # apply small hysteresis: only change if >1% difference
         if self.last_duty is None or abs(duty - self.last_duty) >= 1.0:
             try:
                 # real PWM ChangeDutyCycle or Dummy implementation
                 self.pwm.ChangeDutyCycle(duty)
                 logger.info(
-                    "Aggregate temp (method=%s, curve=%s): %.1f°C -> duty %.1f%%",
+                    "Aggregate temp (method=%s, curve=%s): %.1f°C -> Fan: %.1f%%",
                     self.aggregate,
                     self.fan_curve,
                     t,
@@ -1117,6 +1161,14 @@ def main():
         try:
             from k8s_discovery import get_peers_with_discovery
 
+            # Enable periodic rediscovery
+            controller.k8s_discovery_enabled = True
+            controller.k8s_static_peers = static_peers
+            controller.k8s_namespace = args.k8s_namespace
+            controller.k8s_label_selector = args.k8s_label_selector
+            controller.k8s_port = 8080
+
+            # Do initial discovery
             all_peers = get_peers_with_discovery(
                 static_peers=static_peers,
                 enable_k8s_discovery=True,
@@ -1125,7 +1177,7 @@ def main():
                 k8s_port=8080,
             )
             controller.peers = all_peers
-            logger.info("Using Kubernetes discovery: %d total peers", len(all_peers))
+            logger.info("Using Kubernetes discovery: %d total peers (will rediscover every ~1 min)", len(all_peers))
         except ImportError as e:
             logger.warning("Kubernetes discovery failed: %s", e)
             logger.warning("Falling back to static peers")

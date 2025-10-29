@@ -198,6 +198,98 @@ The deployment consists of:
 - Worker nodes (Slots 2-7): Temperature exporters only
 - Anti-affinity ensures no scheduling conflicts
 
+## Managing the Deployment
+
+### Why DaemonSets?
+
+This project uses **DaemonSets** instead of Deployments for good reasons:
+
+**Fan Controller:**
+- Needs to run on the **specific** control plane node with the physical fan
+- Hardware-bound: GPIO pins are tied to that exact node
+- DaemonSet with node selector ensures it runs on the correct node
+- Automatically restarts if the pod crashes
+
+**Temperature Exporters:**
+- Must run on **every** worker node to read local temperatures
+- Each exporter reports its node's temperature
+- DaemonSet ensures one exporter per worker node
+- Automatically deploys to new nodes added to the cluster
+
+**Why not Deployments?**
+- Deployments choose nodes randomly (not suitable for hardware-specific tasks)
+- Can't guarantee "exactly one per node" (exporters need this)
+- No built-in node affinity for hardware access
+
+### Stopping/Starting Pods
+
+#### Option 1: Scale Down/Up (Temporary Stop)
+```bash
+# Stop the fan controller (scales to 0 replicas)
+kubectl -n sipeed-cm5-fancontrol scale daemonset sipeed-fan-controller --replicas=0
+
+# Stop temperature exporters
+kubectl -n sipeed-cm5-fancontrol scale daemonset sipeed-temp-exporter --replicas=0
+
+# Restart (scale back up)
+kubectl -n sipeed-cm5-fancontrol scale daemonset sipeed-fan-controller --replicas=1
+kubectl -n sipeed-cm5-fancontrol scale daemonset sipeed-temp-exporter --replicas=1
+```
+
+**Note:** With DaemonSets, scaling to 0 stops all pods, but they'll restart when you scale back up.
+
+#### Option 2: Delete Pods (They Auto-Restart)
+```bash
+# Delete specific pod (it will restart immediately)
+kubectl -n sipeed-cm5-fancontrol delete pod sipeed-fan-controller-xxxxx
+
+# Not suitable for stopping - DaemonSets ensure pods always run
+```
+
+#### Option 3: Cordon Node (Prevent Scheduling)
+```bash
+# Prevent new pods from being scheduled on control plane node
+kubectl cordon <control-plane-node>
+
+# Delete the pod (won't restart due to cordon)
+kubectl -n sipeed-cm5-fancontrol delete pod sipeed-fan-controller-xxxxx
+
+# Re-enable scheduling to restart
+kubectl uncordon <control-plane-node>
+```
+
+#### Option 4: Uninstall Completely
+```bash
+# Remove the entire deployment
+helm uninstall sipeed-cm5-fancontrol -n sipeed-cm5-fancontrol
+
+# Or delete namespace (removes everything)
+kubectl delete namespace sipeed-cm5-fancontrol
+```
+
+#### Option 5: Pause Using Node Selector (Clean Approach)
+```bash
+# Add a temporary label to "hide" nodes
+kubectl label nodes <control-plane-node> fan-paused=true
+
+# Update values.yaml to exclude paused nodes, then upgrade:
+# Add to controller.nodeSelector: fan-paused: "false"
+helm upgrade sipeed-cm5-fancontrol ./helm -n sipeed-cm5-fancontrol
+
+# Remove label to resume
+kubectl label nodes <control-plane-node> fan-paused-
+```
+
+### Pod Restart Handling
+
+The fan controller now **automatically rediscovers** temperature exporter pods every ~1 minute:
+- When a temp exporter pod restarts, it gets a new IP address
+- The fan controller detects the new IP within 1 minute
+- No manual intervention needed
+- Logs show "Peer list updated" when IPs change
+
+This solves the IP address problem when pods are deleted/restarted!
+
 ## Monitoring
 
 The fan controller exposes a status endpoint that provides real-time information:
