@@ -42,7 +42,7 @@ jobs:
       - name: Lint with pylint
         run: |
           cd deploy-systemd/
-          pylint fan_control.py temp_exporter.py
+          pylint --rcfile=../.pylintrc fan_control.py temp_exporter.py
         
       - name: Run tests with coverage
         run: |
