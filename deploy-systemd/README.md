@@ -79,7 +79,7 @@ The installation script will:
 2. Ask if this is a **Fan Control Node** (Slot 1) or **Temperature Provider Node** (Slots 2-7)
 3. For Fan Control Node: prompt for peer node addresses (uses HTTP polling automatically)
 4. Install files to `/opt/sipeed-fancontrol/`
-5. Install configuration file to `/etc/sipeed-fancontrol.conf` (fan control only)
+5. Install configuration files to `/etc/sipeed-cm5-fancontrol/` (fan control only)
 6. Configure and start the systemd service automatically
 
 ### Example Setup
@@ -183,7 +183,7 @@ curl http://node1:8081/status
 
 ### Fan Control Modes
 
-The fan controller supports two modes via `/etc/sipeed-fancontrol.conf`:
+The fan controller supports two modes via `/etc/sipeed-cm5-fancontrol/fancontrol.conf`:
 
 **Auto Mode (Default):** Automatically adjusts fan speed based on temperature
 ```bash
@@ -202,7 +202,7 @@ MANUAL_SPEED=75   # Fixed fan speed (0-100%)
 
 To change modes, edit the config file and restart the service:
 ```bash
-sudo nano /etc/sipeed-fancontrol.conf
+sudo nano /etc/sipeed-cm5-fancontrol/fancontrol.conf
 sudo systemctl restart sipeed-cm5-fancontrol.service
 ```
 
@@ -242,7 +242,7 @@ The uninstall script will:
 2. Stop and disable them
 3. Remove service files from `/etc/systemd/system/`
 4. Remove installation directory `/opt/sipeed-fancontrol/`
-5. Optionally remove configuration file `/etc/sipeed-fancontrol.conf`
+5. Optionally remove configuration directory `/etc/sipeed-cm5-fancontrol/`
 
 ## Testing
 

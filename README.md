@@ -43,7 +43,7 @@ Reboot after making this change for k3s to function properly.
   - HTTP status endpoint showing all node temperatures
   - CLI tool (`fanctl`) for quick status checks
   - Enhanced logging with individual temperature readings
-- Configuration file (`/etc/sipeed-fancontrol.conf`) for easy mode switching
+- Configuration files in `/etc/sipeed-cm5-fancontrol/` for easy mode switching
 - Temperature polling from local and remote nodes (HTTP or SSH)
 - Parallel peer temperature polling for fast aggregation
 - Prometheus-compatible metrics endpoint
@@ -65,7 +65,7 @@ curl -sSL https://raw.githubusercontent.com/Mi-Q/sipeed-cm5-fancontrol/main/depl
 The interactive installer will guide you through setting up either:
 - **Fan Control Node** (Slot 1) - Controls the fan based on all node temperatures
   - Supports auto mode (temperature-based) or manual mode (fixed speed)
-  - Configure via `/etc/sipeed-fancontrol.conf` after installation
+  - Configure via `/etc/sipeed-cm5-fancontrol/fancontrol.conf` after installation
 - **Temperature Provider Node** (Other Slots) - Exposes temperature via HTTP
   - Provides temperature at `:8080/temp` and metrics at `:8080/metrics`
 

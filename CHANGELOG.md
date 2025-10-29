@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 95% coverage for fan_control.py
   - 99% coverage for temp_exporter.py
   - Tests for GPIO error handling, signal handlers, remote polling, and edge cases
-- Configuration file support (`/etc/sipeed-fancontrol.conf`) for fan control modes
+- Configuration file support in `/etc/sipeed-cm5-fancontrol/` for fan control modes
   - **Manual mode**: Set fixed fan speed percentage (0-100%)
   - **Auto mode**: Automatic temperature-based control with configurable thresholds
   - Per-mode temperature and fan speed thresholds

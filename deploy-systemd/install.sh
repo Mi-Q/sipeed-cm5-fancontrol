@@ -25,6 +25,11 @@
 
 set -e
 
+# Configuration directory
+CONFIG_DIR="/etc/sipeed-cm5-fancontrol"
+CONFIG_FILE="$CONFIG_DIR/fancontrol.conf"
+PEERS_CONFIG_FILE="$CONFIG_DIR/peers.conf"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -270,7 +275,6 @@ echo -e "${YELLOW}Installing ${SERVICE_TYPE} service...${NC}"
 # Additional configuration for fan control node
 if [ "$NODE_TYPE" = "1" ]; then
     # Check if we have saved peer configuration from previous installation
-    PEERS_CONFIG_FILE="/etc/sipeed-fancontrol-peers.conf"
     SAVED_PEERS=""
     
     if [ -f "$PEERS_CONFIG_FILE" ]; then
@@ -354,19 +358,35 @@ if [ "$RECONFIGURE_ONLY" != true ]; then
     
     # Handle config file for fan control node
     if [ "$NODE_TYPE" = "1" ]; then
-        if [ ! -f "/etc/sipeed-fancontrol.conf" ]; then
+        # Create config directory if it doesn't exist
+        mkdir -p "$CONFIG_DIR"
+        
+        # Check for legacy config file location and migrate if needed
+        if [ -f "/etc/sipeed-fancontrol.conf" ] && [ ! -f "$CONFIG_FILE" ]; then
+            echo -e "${YELLOW}Migrating config from old location...${NC}"
+            mv "/etc/sipeed-fancontrol.conf" "$CONFIG_FILE"
+            echo -e "${GREEN}✓ Config migrated to $CONFIG_FILE${NC}"
+        fi
+        
+        # Check for legacy peers config and migrate
+        if [ -f "/etc/sipeed-fancontrol-peers.conf" ] && [ ! -f "$PEERS_CONFIG_FILE" ]; then
+            mv "/etc/sipeed-fancontrol-peers.conf" "$PEERS_CONFIG_FILE"
+            echo -e "${GREEN}✓ Peers config migrated to $PEERS_CONFIG_FILE${NC}"
+        fi
+        
+        if [ ! -f "$CONFIG_FILE" ]; then
             # New installation - copy config file
             echo "Installing configuration file..."
-            cp "$SCRIPT_DIR/fan_control.conf" "/etc/sipeed-fancontrol.conf"
-            echo -e "${GREEN}✓ Config file installed at /etc/sipeed-fancontrol.conf${NC}"
+            cp "$SCRIPT_DIR/fan_control.conf" "$CONFIG_FILE"
+            echo -e "${GREEN}✓ Config file installed at $CONFIG_FILE${NC}"
             echo -e "${BLUE}  Edit this file to switch between auto/manual mode or change fan curve${NC}"
         else
             # Existing config - check for differences
-            if ! cmp -s "$SCRIPT_DIR/fan_control.conf" "/etc/sipeed-fancontrol.conf"; then
+            if ! cmp -s "$SCRIPT_DIR/fan_control.conf" "$CONFIG_FILE"; then
                 echo ""
                 echo -e "${YELLOW}Configuration file has changed in the new version!${NC}"
                 echo ""
-                echo "Current config: /etc/sipeed-fancontrol.conf"
+                echo "Current config: $CONFIG_FILE"
                 echo "New config:     $SCRIPT_DIR/fan_control.conf"
                 echo ""
                 
@@ -375,7 +395,7 @@ if [ "$RECONFIGURE_ONLY" != true ]; then
                 if [ "$SHOW_DIFF" = "y" ] || [ "$SHOW_DIFF" = "Y" ]; then
                     echo ""
                     echo "=== Configuration Differences ==="
-                    diff -u "/etc/sipeed-fancontrol.conf" "$SCRIPT_DIR/fan_control.conf" || true
+                    diff -u "$CONFIG_FILE" "$SCRIPT_DIR/fan_control.conf" || true
                     echo "================================="
                     echo ""
                 fi
@@ -390,14 +410,14 @@ if [ "$RECONFIGURE_ONLY" != true ]; then
                 case $CONFIG_OPTION in
                     2)
                         echo "Updating configuration file..."
-                        cp "$SCRIPT_DIR/fan_control.conf" "/etc/sipeed-fancontrol.conf"
+                        cp "$SCRIPT_DIR/fan_control.conf" "$CONFIG_FILE"
                         echo -e "${GREEN}✓ Config file updated${NC}"
                         ;;
                     3)
-                        BACKUP_FILE="/etc/sipeed-fancontrol.conf.backup.$(date +%Y%m%d_%H%M%S)"
+                        BACKUP_FILE="$CONFIG_FILE.backup.$(date +%Y%m%d_%H%M%S)"
                         echo "Backing up existing config to: $BACKUP_FILE"
-                        cp "/etc/sipeed-fancontrol.conf" "$BACKUP_FILE"
-                        cp "$SCRIPT_DIR/fan_control.conf" "/etc/sipeed-fancontrol.conf"
+                        cp "$CONFIG_FILE" "$BACKUP_FILE"
+                        cp "$SCRIPT_DIR/fan_control.conf" "$CONFIG_FILE"
                         echo -e "${GREEN}✓ Config backed up and updated${NC}"
                         echo -e "${BLUE}  Previous config saved as: $BACKUP_FILE${NC}"
                         ;;
