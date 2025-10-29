@@ -35,12 +35,6 @@ spec:
             - name: thermal
               mountPath: /sys/class/thermal
               readOnly: true
-            - name: vcio
-              mountPath: /dev/vcio
-              readOnly: true
-            - name: vchiq
-              mountPath: /dev/vchiq
-              readOnly: true
           resources:
             {{- toYaml .Values.exporter.resources | nindent 12 }}
       volumes:
@@ -48,11 +42,3 @@ spec:
           hostPath:
             path: /sys/class/thermal
             type: Directory
-        - name: vcio
-          hostPath:
-            path: /dev/vcio
-            type: CharDevice
-        - name: vchiq
-          hostPath:
-            path: /dev/vchiq
-            type: CharDevice

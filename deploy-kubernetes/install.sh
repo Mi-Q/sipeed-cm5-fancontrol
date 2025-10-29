@@ -3,8 +3,8 @@
 # Script to install the Helm chart in k3s
 set -euo pipefail
 
-# Default namespace is default, but can be overridden
-NAMESPACE=${1:-default}
+# Default namespace is sipeed-cm5-fancontrol, but can be overridden
+NAMESPACE=${1:-sipeed-cm5-fancontrol}
 
 echo "Installing Sipeed CM5 Fan Controller Helm chart in namespace ${NAMESPACE}..."
 
