@@ -261,7 +261,7 @@ if systemctl is-active --quiet "$SERVICE_NAME.service"; then
             echo "Port $PORT_TO_CHECK is now available"
             break
         fi
-        sleep 0.5
+        sleep 1
         ELAPSED=$((ELAPSED + 1))
     done
     
