@@ -121,6 +121,36 @@ class StatusHTTPHandler(BaseHTTPRequestHandler):
             # Get status from server's fan_controller reference
             status = self.server.fan_controller.get_status()
             self.wfile.write(json.dumps(status, indent=2).encode())
+        elif self.path == "/metrics":
+            # Prometheus metrics endpoint
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+            self.end_headers()
+            status = self.server.fan_controller.get_status()
+
+            # Build Prometheus metrics
+            metrics = []
+
+            # Fan duty cycle metric
+            duty = status.get("fan_duty_percent", 0)
+            metrics.append("# HELP fan_duty_percent Fan duty cycle percentage")
+            metrics.append("# TYPE fan_duty_percent gauge")
+            metrics.append(f"fan_duty_percent {duty:.1f}")
+
+            # Aggregate temperature metric
+            agg_temp = status.get("aggregate_temp_celsius")
+            if agg_temp is not None:
+                metrics.append("# HELP aggregate_temperature_celsius Aggregate temperature in Celsius")
+                metrics.append("# TYPE aggregate_temperature_celsius gauge")
+                metrics.append(f"aggregate_temperature_celsius {agg_temp:.3f}")
+
+            # Fan controller running status
+            running = 1 if status.get("running", False) else 0
+            metrics.append("# HELP fan_controller_running Fan controller running status (1=running, 0=stopped)")
+            metrics.append("# TYPE fan_controller_running gauge")
+            metrics.append(f"fan_controller_running {running}")
+
+            self.wfile.write("\n".join(metrics).encode() + b"\n")
         else:
             self.send_response(404)
             self.end_headers()
