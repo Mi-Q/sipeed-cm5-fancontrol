@@ -112,7 +112,7 @@ data:
               "datasource": "Prometheus",
               "editorMode": "code",
               "expr": "node_temperature_celsius",
-              "legendFormat": "{{instance}}",
+              "legendFormat": "{{`{{instance}}`}}",
               "range": true,
               "refId": "A"
             }
@@ -323,7 +323,7 @@ data:
               "datasource": "Prometheus",
               "editorMode": "code",
               "expr": "node_temperature_celsius",
-              "legendFormat": "{{instance}}",
+              "legendFormat": "{{`{{instance}}`}}",
               "range": true,
               "refId": "A"
             }
