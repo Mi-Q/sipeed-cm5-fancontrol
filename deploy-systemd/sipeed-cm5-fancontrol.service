@@ -7,7 +7,7 @@ Type=simple
 # Run as root to allow GPIO access
 User=root
 WorkingDirectory=/opt/sipeed-fancontrol
-ExecStart=/usr/bin/python3 /opt/sipeed-fancontrol/fan_control.py --status-port 8081
+ExecStart=/usr/bin/python3 /opt/sipeed-fancontrol/fan_control.py --status-port 2506
 Restart=always
 RestartSec=5
 

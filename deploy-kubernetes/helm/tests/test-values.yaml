@@ -38,4 +38,4 @@ tests:
           value: sipeed-temp-exporter
       - equal:
           path: spec.ports[0].port
-          value: 8080
+          value: 2505

@@ -56,7 +56,7 @@ The following table lists the configurable parameters of the chart and their def
 | `controller.resources.requests.memory` | Memory request | `64Mi` |
 | `controller.args` | Fan controller arguments | See `values.yaml` |
 | `controller.securityContext.privileged` | Run container as privileged (GPIO access) | `true` |
-| `controller.service.port` | Status endpoint port | `8081` |
+| `controller.service.port` | Status endpoint port | `2506` |
 
 ### Controller Configuration (ConfigMap)
 
@@ -86,7 +86,7 @@ The following table lists the configurable parameters of the chart and their def
 | `exporter.resources.requests.cpu` | CPU request | `50m` |
 | `exporter.resources.requests.memory` | Memory request | `64Mi` |
 | `exporter.args` | Temperature exporter arguments | See `values.yaml` |
-| `exporter.service.port` | Temperature exporter service port | `8080` |
+| `exporter.service.port` | Temperature exporter service port | `2505` |
 
 ### Examples
 

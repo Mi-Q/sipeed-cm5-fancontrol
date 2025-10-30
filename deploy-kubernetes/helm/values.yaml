@@ -16,10 +16,10 @@ controller:
   args:
     - --remote-method=http
     - --k8s-discovery  # Enable automatic discovery of temp exporter pods
-    - --status-port=8081
+    - --status-port=2506
     - --status-bind=0.0.0.0
   service:
-    port: 8081
+    port: 2506
   securityContext:
     privileged: true
   
@@ -51,6 +51,6 @@ exporter:
       memory: 64Mi
   args:
     - --bind=0.0.0.0
-    - --port=8080
+    - --port=2505
   service:
-    port: 8080
+    port: 2505

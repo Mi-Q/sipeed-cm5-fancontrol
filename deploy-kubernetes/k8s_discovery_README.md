@@ -26,7 +26,7 @@ For **systemd deployments**, peer configuration is static and defined via comman
 2. Module checks if running inside Kubernetes pod
 3. Uses in-cluster service account to query Kubernetes API
 4. Lists all pods matching label selector `app.kubernetes.io/name=sipeed-temp-exporter`
-5. Returns list of pod IPs with port 8080/temp endpoint
+5. Returns list of pod IPs with port 2505/temp endpoint
 6. Fan controller polls all discovered pods
 
 ## Requirements

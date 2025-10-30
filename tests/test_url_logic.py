@@ -2,12 +2,12 @@
 """Test URL construction logic for HTTP peer polling."""
 
 test_cases = [
-    ("node2", "http://node2:8080/temp"),
-    ("192.168.1.102", "http://192.168.1.102:8080/temp"),
-    ("http://node2:8080/temp", "http://node2:8080/temp"),
-    ("http://node2", "http://node2:8080/temp"),
-    ("http://node2:8080", "http://node2:8080/temp"),
-    ("nanocluster2.internal", "http://nanocluster2.internal:8080/temp"),
+    ("node2", "http://node2:2505/temp"),
+    ("192.168.1.102", "http://192.168.1.102:2505/temp"),
+    ("http://node2:2505/temp", "http://node2:2505/temp"),
+    ("http://node2", "http://node2:2505/temp"),
+    ("http://node2:2505", "http://node2:2505/temp"),
+    ("nanocluster2.internal", "http://nanocluster2.internal:2505/temp"),
 ]
 
 print("Testing URL construction logic:\n")
@@ -17,9 +17,9 @@ for input_url, expected in test_cases:
     # Simulate the URL construction logic
     url = input_url
     if not url.startswith("http://") and not url.startswith("https://"):
-        url = f"http://{url}:8080/temp"
+        url = f"http://{url}:2505/temp"
     elif ":" not in url.split("://", 1)[1]:
-        url = f"{url}:8080/temp"
+        url = f"{url}:2505/temp"
     elif not url.endswith("/temp") and not url.endswith("/metrics"):
         url = f"{url}/temp"
 

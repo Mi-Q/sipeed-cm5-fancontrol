@@ -85,7 +85,7 @@ The interactive installer will guide you through setting up either:
   - Supports auto mode (temperature-based) or manual mode (fixed speed)
   - Configure via `/etc/sipeed-cm5-fancontrol/fancontrol.conf` after installation
 - **Temperature Provider Node** (Other Slots) - Exposes temperature via HTTP
-  - Provides temperature at `:8080/temp` and metrics at `:8080/metrics`
+  - Provides temperature at `:2505/temp` and metrics at `:2505/metrics`
 
 **Upgrade existing installation:**
 ```bash

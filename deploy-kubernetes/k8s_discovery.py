@@ -24,7 +24,7 @@ def is_running_in_kubernetes() -> bool:
 def discover_temp_exporter_pods(
     namespace: Optional[str] = None,
     label_selector: str = "app.kubernetes.io/name=sipeed-temp-exporter",
-    port: int = 8080,
+    port: int = 2505,
 ) -> List[str]:
     """Discover temperature exporter pods via Kubernetes API.
 
@@ -37,7 +37,7 @@ def discover_temp_exporter_pods(
         port: Port number for temp exporter service
 
     Returns:
-        List[str]: List of URLs (e.g., ['http://10.42.0.5:8080/temp', ...])
+        List[str]: List of URLs (e.g., ['http://10.42.0.5:2505/temp', ...])
     """
     if not is_running_in_kubernetes():
         logger.debug("Not running in Kubernetes, skipping discovery")
@@ -68,9 +68,7 @@ def discover_temp_exporter_pods(
         for pod in pods.items:
             # Only include running pods
             if pod.status.phase != "Running":
-                logger.debug(
-                    "Skipping pod %s (phase: %s)", pod.metadata.name, pod.status.phase
-                )
+                logger.debug("Skipping pod %s (phase: %s)", pod.metadata.name, pod.status.phase)
                 continue
 
             # Get pod IP
@@ -88,9 +86,7 @@ def discover_temp_exporter_pods(
         return urls
 
     except ImportError:
-        logger.warning(
-            "kubernetes Python module not available, install with: pip install kubernetes"
-        )
+        logger.warning("kubernetes Python module not available, install with: pip install kubernetes")
         return []
     except Exception as e:
         logger.error("Failed to discover pods via Kubernetes API: %s", e)
@@ -102,7 +98,7 @@ def get_peers_with_discovery(
     enable_k8s_discovery: bool = True,
     k8s_namespace: Optional[str] = None,
     k8s_label_selector: str = "app.kubernetes.io/name=sipeed-temp-exporter",
-    k8s_port: int = 8080,
+    k8s_port: int = 2505,
 ) -> List[str]:
     """Get peer list with optional Kubernetes auto-discovery.
 

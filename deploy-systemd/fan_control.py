@@ -129,7 +129,7 @@ class StatusHTTPHandler(BaseHTTPRequestHandler):
 class StatusServer:
     """HTTP server for exposing fan controller status."""
 
-    def __init__(self, fan_controller, port: int = 8081, bind: str = "0.0.0.0"):
+    def __init__(self, fan_controller, port: int = 2506, bind: str = "0.0.0.0"):
         self.fan_controller = fan_controller
         self.port = port
         self.bind = bind
@@ -530,7 +530,7 @@ def read_remote_temp_http(url: str, timeout: int = 5) -> Optional[float]:
     Automatically constructs full URL if only hostname/IP is provided.
 
     Args:
-        url: HTTP endpoint URL or hostname (e.g., 'http://node2:8080/temp' or 'node2')
+        url: HTTP endpoint URL or hostname (e.g., 'http://node2:2505/temp' or 'node2')
         timeout: Request timeout in seconds
 
     Returns:
@@ -538,10 +538,10 @@ def read_remote_temp_http(url: str, timeout: int = 5) -> Optional[float]:
     """
     # Construct full URL if only hostname provided
     if not url.startswith("http://") and not url.startswith("https://"):
-        url = f"http://{url}:8080/temp"
+        url = f"http://{url}:2505/temp"
     elif ":" not in url.split("://", 1)[1]:
         # Has http:// but no port, add default port and path
-        url = f"{url}:8080/temp"
+        url = f"{url}:2505/temp"
     elif not url.endswith("/temp") and not url.endswith("/metrics"):
         # Has host:port but no path
         url = f"{url}/temp"
@@ -650,7 +650,7 @@ class FanController:
         self.k8s_static_peers: List[str] = []
         self.k8s_namespace: Optional[str] = None
         self.k8s_label_selector: str = "app.kubernetes.io/name=sipeed-temp-exporter"
-        self.k8s_port: int = 8080
+        self.k8s_port: int = 2505
         self._discovery_counter = 0
         self._discovery_interval = 12  # Rediscover every 12 polling cycles (1 minute with 5s polls)
 
@@ -1087,7 +1087,7 @@ def parse_args():
     p.add_argument(
         "--status-port",
         type=int,
-        default=8081,
+        default=2506,
         help="HTTP port for status endpoint (0 to disable)",
     )
     p.add_argument(
@@ -1166,7 +1166,7 @@ def main():
             controller.k8s_static_peers = static_peers
             controller.k8s_namespace = args.k8s_namespace
             controller.k8s_label_selector = args.k8s_label_selector
-            controller.k8s_port = 8080
+            controller.k8s_port = 2505
 
             # Do initial discovery
             all_peers = get_peers_with_discovery(
@@ -1174,7 +1174,7 @@ def main():
                 enable_k8s_discovery=True,
                 k8s_namespace=args.k8s_namespace,
                 k8s_label_selector=args.k8s_label_selector,
-                k8s_port=8080,
+                k8s_port=2505,
             )
             controller.peers = all_peers
             logger.info("Using Kubernetes discovery: %d total peers (will rediscover every ~1 min)", len(all_peers))

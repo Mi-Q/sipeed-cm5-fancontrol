@@ -34,12 +34,12 @@ Both deployments share the same core `fan_control.py` logic, which gracefully ha
 - **Kubernetes-native peer discovery** - Automatically discovers all temp exporter pods
 - No manual peer configuration needed - dynamically adapts to cluster changes
 - Multi-node temperature aggregation
-- HTTP status endpoint at port 8081 for monitoring
+- HTTP status endpoint at port 2506 for monitoring
 - Real-time status including all node temperatures, aggregate temp, and fan duty cycle
 - RBAC-based Kubernetes API access for pod discovery
 
 ### Temperature Exporter
-- Exposes node temperature via HTTP on port 8080
+- Exposes node temperature via HTTP on port 2505
 - Prometheus-compatible metrics endpoint
 - Lightweight HTTP service
 - Runs on all worker nodes (excludes master)
@@ -97,11 +97,11 @@ kubectl get nodes -l node-role.kubernetes.io/control-plane=true
    kubectl logs -n [namespace] -l app.kubernetes.io/name=sipeed-temp-exporter
    
    # Test temperature endpoint from within cluster
-   kubectl run -it --rm debug --image=alpine --restart=Never -- wget -qO- http://sipeed-temp-exporter:8080/temp
+   kubectl run -it --rm debug --image=alpine --restart=Never -- wget -qO- http://sipeed-temp-exporter:2505/temp
    
    # Or port-forward and test locally
-   kubectl port-forward -n [namespace] svc/sipeed-temp-exporter 8080:8080
-   curl http://localhost:8080/temp
+   kubectl port-forward -n [namespace] svc/sipeed-temp-exporter 2505:2505
+   curl http://localhost:2505/temp
    ```
 
 ## Configuration
@@ -130,7 +130,7 @@ controller:
   args:
     - --remote-method=http
     - --k8s-discovery  # Auto-discovers all temp exporter pods
-    - --status-port=8081
+    - --status-port=2506
 ```
 
 ### Manual Peer Configuration (Optional)
@@ -142,7 +142,7 @@ controller:
   args:
     - --remote-method=http
     - --peers=node2,node3,node4  # Static peer list
-    - --status-port=8081
+    - --status-port=2506
 ```
 
 ### Fan Controller Settings
@@ -165,7 +165,7 @@ The deployment consists of:
    - Accesses GPIO for fan control via `/sys` and `/dev` mounts
    - Runs with `privileged: true` and `hostPID: true` for hardware access
    - Polls temperatures from local and peer nodes
-   - Provides HTTP status endpoint on port 8081
+   - Provides HTTP status endpoint on port 2506
    - Only one instance per cluster
 
 **Hardware Access Requirements:**
@@ -178,7 +178,7 @@ The deployment consists of:
 
 2. **Temperature Exporter DaemonSet** (Worker Nodes Only):
    - Runs on all worker nodes (excludes master node)
-   - Exposes node temperature via HTTP on port 8080
+   - Exposes node temperature via HTTP on port 2505
    - Reads temperature via `vcgencmd` (if available) or falls back to sysfs
    - Mounts `/sys/class/thermal` for sysfs temperature reading
    - Mounts `/dev/vcio` and `/dev/vchiq` for VideoCore GPU access (vcgencmd)
@@ -192,8 +192,8 @@ The deployment consists of:
 - Both methods work in containers with proper device mounts
 
 3. Services:
-   - Temperature Exporter Service (port 8080): Internal temperature API endpoint
-   - Fan Controller Service (port 8081): Status and monitoring endpoint
+   - Temperature Exporter Service (port 2505): Internal temperature API endpoint
+   - Fan Controller Service (port 2506): Status and monitoring endpoint
 
 **Node Distribution:**
 - Master node (Slot 1): Fan controller with GPIO access
@@ -298,7 +298,7 @@ The fan controller exposes a status endpoint that provides real-time information
 
 ```bash
 # Query status from within the cluster
-curl http://sipeed-fan-controller:8081/status
+curl http://sipeed-fan-controller:2506/status
 ```
 
 Response includes:
@@ -310,8 +310,8 @@ Response includes:
 
 You can also query a specific controller pod:
 ```bash
-kubectl port-forward -n [namespace] pod/sipeed-fan-controller-xxxxx 8081:8081
-curl http://localhost:8081/status
+kubectl port-forward -n [namespace] pod/sipeed-fan-controller-xxxxx 2506:2506
+curl http://localhost:2506/status
 ```
 
 ## Security

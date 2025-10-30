@@ -79,42 +79,42 @@ class TestReadRemoteTempHTTP(unittest.TestCase):
     def test_success(self, mock_check_output):
         """Test successful HTTP temperature reading."""
         mock_check_output.return_value = b"53.2"
-        temp = read_remote_temp_http("http://192.168.1.100:8080/temp")
+        temp = read_remote_temp_http("http://192.168.1.100:2505/temp")
         self.assertEqual(temp, 53.2)
 
     @patch("fan_control.subprocess.check_output")
     def test_timeout(self, mock_check_output):
         """Test HTTP timeout handling."""
         mock_check_output.side_effect = subprocess.TimeoutExpired(cmd="curl", timeout=5)
-        temp = read_remote_temp_http("http://192.168.1.100:8080/temp", timeout=5)
+        temp = read_remote_temp_http("http://192.168.1.100:2505/temp", timeout=5)
         self.assertIsNone(temp)
 
     @patch("fan_control.subprocess.check_output")
     def test_connection_error(self, mock_check_output):
         """Test HTTP connection error."""
         mock_check_output.side_effect = subprocess.SubprocessError("Connection refused")
-        temp = read_remote_temp_http("http://192.168.1.100:8080/temp")
+        temp = read_remote_temp_http("http://192.168.1.100:2505/temp")
         self.assertIsNone(temp)
 
     @patch("fan_control.subprocess.check_output")
     def test_invalid_response(self, mock_check_output):
         """Test when HTTP returns non-numeric response."""
         mock_check_output.return_value = b"not a number"
-        temp = read_remote_temp_http("http://192.168.1.100:8080/temp")
+        temp = read_remote_temp_http("http://192.168.1.100:2505/temp")
         self.assertIsNone(temp)
 
     @patch("fan_control.subprocess.check_output")
     def test_empty_response(self, mock_check_output):
         """Test when HTTP returns empty response."""
         mock_check_output.return_value = b""
-        temp = read_remote_temp_http("http://192.168.1.100:8080/temp")
+        temp = read_remote_temp_http("http://192.168.1.100:2505/temp")
         self.assertIsNone(temp)
 
     @patch("fan_control.subprocess.check_output")
     def test_custom_timeout(self, mock_check_output):
         """Test custom timeout value."""
         mock_check_output.return_value = b"49.8"
-        temp = read_remote_temp_http("http://192.168.1.100:8080/temp", timeout=15)
+        temp = read_remote_temp_http("http://192.168.1.100:2505/temp", timeout=15)
         self.assertEqual(temp, 49.8)
 
 
@@ -141,9 +141,9 @@ class TestRemotePeerPolling(unittest.TestCase):
 
         controller = FanController(pin=13, freq=50, poll=5, dry_run=True)
         controller.peers = [
-            "http://peer1:8080/temp",
-            "http://peer2:8080/temp",
-            "http://peer3:8080/temp",
+            "http://peer1:2505/temp",
+            "http://peer2:2505/temp",
+            "http://peer3:2505/temp",
         ]
         controller.remote_method = "http"
         controller.aggregate = "avg"  # Use average aggregation
@@ -154,9 +154,9 @@ class TestRemotePeerPolling(unittest.TestCase):
         # Should have local + 3 peers (2 successful, 1 failed)
         self.assertIn("local", result["per_host"])
         self.assertEqual(result["per_host"]["local"], 50.0)
-        self.assertEqual(result["per_host"]["http://peer1:8080/temp"], 55.0)
-        self.assertIsNone(result["per_host"]["http://peer2:8080/temp"])
-        self.assertEqual(result["per_host"]["http://peer3:8080/temp"], 52.0)
+        self.assertEqual(result["per_host"]["http://peer1:2505/temp"], 55.0)
+        self.assertIsNone(result["per_host"]["http://peer2:2505/temp"])
+        self.assertEqual(result["per_host"]["http://peer3:2505/temp"], 52.0)
         # Aggregate should use valid temps only (50, 55, 52) = avg 52.333
         self.assertAlmostEqual(result["aggregated_temp"], 52.333, places=2)
 
@@ -203,10 +203,10 @@ class TestRemotePeerPolling(unittest.TestCase):
 
         controller = FanController(pin=13, freq=50, poll=5, dry_run=True)
         controller.peers = [
-            "http://peer1:8080/temp",
-            "http://peer2:8080/temp",
-            "http://peer3:8080/temp",
-            "http://peer4:8080/temp",
+            "http://peer1:2505/temp",
+            "http://peer2:2505/temp",
+            "http://peer3:2505/temp",
+            "http://peer4:2505/temp",
         ]
         controller.remote_method = "http"
         controller.start()

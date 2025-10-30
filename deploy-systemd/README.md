@@ -13,8 +13,8 @@ The Sipeed NanoCluster has 7 slots with one fan connected to **Slot 1**. The fan
   - **Only install `sipeed-cm5-fancontrol.service` on this node**
   
 - **Other Slots (Temperature Provider Nodes)**: Run `temp_exporter.py` to expose temperature via HTTP
-  - Provides local temperature on HTTP endpoint `:8080/temp`
-  - Provides Prometheus metrics on `:8080/metrics`
+  - Provides local temperature on HTTP endpoint `:2505/temp`
+  - Provides Prometheus metrics on `:2505/metrics`
   - **Only install `sipeed-temp-exporter.service` on these nodes**
 
 ## Files
@@ -89,15 +89,15 @@ The installation script will:
 sudo ./install.sh
 # Select option 1 (Fan Control Node)
 # Enter peers: node2,node3,node4,node5,node6,node7  (hostname or use IPs: 192.168.1.102,192.168.1.103,...)
-# HTTP polling is used automatically (port 8080)
+# HTTP polling is used automatically (port 2505)
 ```
 
 **On Other Slots (Temperature Provider Nodes):**
 ```bash
 sudo ./install.sh
 # Select option 2 (Temperature Provider Node)
-# Access temperature at: http://<node-ip>:8080/temp
-# Access metrics at: http://<node-ip>:8080/metrics
+# Access temperature at: http://<node-ip>:2505/temp
+# Access metrics at: http://<node-ip>:2505/metrics
 ```
 
 ## Manual Installation
@@ -145,16 +145,16 @@ cm5fan 192.168.1.101
 cm5fan --json
 
 # Specify custom port
-cm5fan --port 8081 node1
+cm5fan --port 2506 node1
 ```
 
 **Using curl:**
 ```bash
 # Get status from fan control node
-curl http://localhost:8081/status
+curl http://localhost:2506/status
 
 # From another machine
-curl http://node1:8081/status
+curl http://node1:2506/status
 ```
 
 **Example output:**

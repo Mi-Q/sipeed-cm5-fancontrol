@@ -210,9 +210,9 @@ class TestMainFunction(unittest.TestCase):
             main()
 
             # Should create server with default bind and port
-            mock_server.assert_called_once_with(("0.0.0.0", 8080), TempHandler)
+            mock_server.assert_called_once_with(("0.0.0.0", 2505), TempHandler)
             # Should log startup message
-            mock_logger.info.assert_any_call("Temperature exporter listening on %s:%d", "0.0.0.0", 8080)
+            mock_logger.info.assert_any_call("Temperature exporter listening on %s:%d", "0.0.0.0", 2505)
             # Should log shutdown on KeyboardInterrupt
             mock_logger.info.assert_any_call("Shutting down")
 

@@ -135,7 +135,7 @@ def main():
     """Main entry point for the temperature exporter server."""
     p = argparse.ArgumentParser(description="Sipeed CM5 temperature exporter")
     p.add_argument("--bind", default="0.0.0.0", help="Bind address")
-    p.add_argument("--port", type=int, default=8080, help="Port to listen on")
+    p.add_argument("--port", type=int, default=2505, help="Port to listen on")
     p.add_argument("--verbose", action="store_true")
     args = p.parse_args()
     if args.verbose:

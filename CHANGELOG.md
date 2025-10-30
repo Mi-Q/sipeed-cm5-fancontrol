@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-01-13
+
+### Changed
+- **Updated default ports to avoid conflicts**
+  - Temperature exporter: Port 8080 → 2505
+  - Status endpoint: Port 8081 → 2506
+  - All configuration files, documentation, and examples updated accordingly
+
+## [0.2.0] - 2025-01-13
+
 ### Added
 - **Kubernetes ConfigMap for fan controller configuration**
   - Fan controller settings managed via Kubernetes ConfigMap instead of file-based config
@@ -22,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Graceful fallback to DummyGPIO if libraries unavailable
 - **Enhanced fan duty cycle logging**
   - Temperature logs now include current fan duty cycle percentage
-  - Format: `Temperatures: local=40.2°C, http://10.42.4.18:8080/temp=34.8°C | Fan: 45.0%`
+  - Format: `Temperatures: local=40.2°C, http://10.42.4.18:2505/temp=34.8°C | Fan: 45.0%`
   - Provides complete visibility of fan controller operation
 - **Automatic peer rediscovery in Kubernetes**
   - Fan controller rediscovers temperature exporter pods every ~1 minute
@@ -71,7 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Real-time monitoring and status features**
-  - HTTP status endpoint at `:8081/status` showing all temperatures and fan state
+  - HTTP status endpoint at `:2506/status` showing all temperatures and fan state
   - CLI tool `cm5fan` for querying fan controller status from command line
   - Enhanced logging showing individual node temperatures before aggregation
   - Status includes: mode, temperatures per node, aggregate temp, fan duty, configuration
@@ -99,8 +109,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Service files properly reference installation path
   - Dynamic path updates during installation for flexibility
 - Temperature exporter service (`temp_exporter.py`) for HTTP-based temperature polling
-  - Prometheus-compatible metrics endpoint at `:8080/metrics`
-  - Plain text temperature endpoint at `:8080/temp`
+  - Prometheus-compatible metrics endpoint at `:2505/metrics`
+  - Plain text temperature endpoint at `:2505/temp`
 - Remote temperature polling via HTTP and SSH methods
 - Parallel peer temperature polling with ThreadPoolExecutor
 - Support for aggregated temperature calculation (max, avg, min)

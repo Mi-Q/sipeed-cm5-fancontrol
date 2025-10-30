@@ -29,7 +29,7 @@ spec:
           args: {{ toYaml .Values.controller.args | nindent 12 }}
           ports:
             - name: status
-              containerPort: 8081
+              containerPort: 2506
               protocol: TCP
           securityContext:
             {{- toYaml .Values.controller.securityContext | nindent 12 }}

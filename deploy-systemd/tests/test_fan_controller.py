@@ -278,7 +278,7 @@ class TestFanController(unittest.TestCase):
         mock_http.return_value = None  # All peers fail
 
         controller = FanController(pin=13, freq=50, poll=5, dry_run=True)
-        controller.peers = ["http://peer1:8080/temp", "http://peer2:8080/temp"]
+        controller.peers = ["http://peer1:2505/temp", "http://peer2:2505/temp"]
         controller.remote_method = "http"
         controller.start()
 
@@ -286,7 +286,7 @@ class TestFanController(unittest.TestCase):
         # Should still work with just local temp
         self.assertIsNotNone(result)
         self.assertEqual(result["per_host"]["local"], 50.0)
-        self.assertIsNone(result["per_host"]["http://peer1:8080/temp"])
+        self.assertIsNone(result["per_host"]["http://peer1:2505/temp"])
 
     @patch("fan_control.signal.signal")
     @patch("fan_control.time.sleep")
