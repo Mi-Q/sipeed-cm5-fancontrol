@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-01-30
+
+### Added
+- **Complete monitoring stack with Grafana and Prometheus**
+  - Pre-configured Grafana dashboard with 4 visualization panels
+  - CPU temperature time series graph per node
+  - Real-time fan speed gauge (0-100%)
+  - Fan speed history graph with 15-day retention
+  - Temperature bar chart showing current temps across cluster
+  - Automated deployment via Helm chart in `deploy-monitoring/`
+  - One-command installation with `install.sh`
+  - NodePort access on port 30300 (configurable)
+  - Persistent storage for Grafana and Prometheus data
+  - Automatic Prometheus data source configuration
+
+- **Prometheus metrics endpoint**
+  - Added `/metrics` endpoint to fan controller on port 2506
+  - Exposes metrics in standard Prometheus exposition format
+  - Metrics include:
+    - `fan_duty_percent`: Current fan speed percentage
+    - `node_temperature_celsius{instance="..."}`: Per-node CPU temperatures
+    - `aggregate_temperature_celsius`: Max/average temp used for fan control
+    - `fan_controller_running`: Controller operational status (1=running, 0=stopped)
+  - Automatic scraping configured via Prometheus ServiceMonitor
+
+- **Kubernetes node hostname resolution in metrics**
+  - Metrics display meaningful Kubernetes node names instead of IP addresses
+  - Control plane node: Uses `NODE_NAME` environment variable from downward API
+  - Worker nodes: Resolved via Kubernetes API during pod discovery
+  - Enhanced `k8s_discovery.py` to return IP-to-node mapping
+  - Graceful fallback to IP address if node name unavailable
+  - Example: `node_temperature_celsius{instance="k3s-master"}` instead of `{instance="10.42.0.1"}`
+
+- **Comprehensive monitoring documentation**
+  - Complete setup guide in `deploy-monitoring/README.md`
+  - Architecture diagram showing Grafana → Prometheus → Metrics flow
+  - Dashboard panel descriptions and customization guide
+  - Troubleshooting section for common issues
+  - Port-forwarding instructions for local access
+  - Prometheus query examples
+
+### Changed
+- **Enhanced temperature status JSON structure**
+  - Status endpoint now returns detailed per-node temperatures
+  - Local node temperature labeled as `"local"` in temperatures object
+  - Remote node temperatures keyed by their URL
+  - Maintains backward compatibility with existing integrations
+
+- **Fan controller DaemonSet enhancement**
+  - Added `NODE_NAME` environment variable injection via downward API
+  - Enables hostname-based metric labeling
+  - Required for meaningful node identification in Grafana
+
+### Fixed
+- **Helm template escaping for Grafana dashboard**
+  - Fixed parsing error: "function 'instance' not defined"
+  - Properly escaped Prometheus query variables in JSON: `{{instance}}` → `{{`{{instance}}`}}`
+  - Dashboard now renders correctly in all Helm versions
+
 ## [0.2.1] - 2025-01-13
 
 ### Changed
