@@ -44,6 +44,10 @@ spec:
           env:
             - name: PYTHONUNBUFFERED
               value: "1"
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
           resources:
             {{- toYaml .Values.controller.resources | nindent 12 }}
       volumes:

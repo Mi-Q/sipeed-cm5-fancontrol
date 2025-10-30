@@ -121,6 +121,66 @@ class StatusHTTPHandler(BaseHTTPRequestHandler):
             # Get status from server's fan_controller reference
             status = self.server.fan_controller.get_status()
             self.wfile.write(json.dumps(status, indent=2).encode())
+        elif self.path == "/metrics":
+            # Prometheus metrics endpoint
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+            self.end_headers()
+            status = self.server.fan_controller.get_status()
+
+            # Build Prometheus metrics
+            metrics = []
+
+            # Fan duty cycle metric
+            duty = status.get("fan_duty_percent", 0)
+            metrics.append("# HELP fan_duty_percent Fan duty cycle percentage")
+            metrics.append("# TYPE fan_duty_percent gauge")
+            metrics.append(f"fan_duty_percent {duty:.1f}")
+
+            # Individual node temperatures
+            temperatures = status.get("temperatures", {})
+            if temperatures:
+                metrics.append("# HELP node_temperature_celsius Node CPU temperature in Celsius")
+                metrics.append("# TYPE node_temperature_celsius gauge")
+
+                # Get IP-to-hostname mapping from fan controller
+                ip_to_node = getattr(self.server.fan_controller, "ip_to_node_map", {})
+
+                for node_name, temp in temperatures.items():
+                    if temp is not None:
+                        # Determine instance label (prefer Kubernetes node name)
+                        if node_name == "local":
+                            # Use NODE_NAME env var if available, else "master"
+                            import os
+
+                            instance = os.environ.get("NODE_NAME", "master")
+                        elif node_name.startswith("http://"):
+                            # Extract IP from URL like "http://10.42.4.19:2505/temp"
+                            import re
+
+                            match = re.search(r"//([^:]+)", node_name)
+                            ip = match.group(1) if match else "unknown"
+                            # Try to resolve IP to Kubernetes node name
+                            instance = ip_to_node.get(ip, ip)
+                        else:
+                            instance = node_name.replace(".", "_").replace(":", "_")
+
+                        metrics.append(f'node_temperature_celsius{{instance="{instance}"}} {temp:.3f}')
+
+            # Aggregate temperature metric
+            agg_temp = status.get("aggregate_temp_celsius")
+            if agg_temp is not None:
+                metrics.append("# HELP aggregate_temperature_celsius Aggregate temperature in Celsius")
+                metrics.append("# TYPE aggregate_temperature_celsius gauge")
+                metrics.append(f"aggregate_temperature_celsius {agg_temp:.3f}")
+
+            # Fan controller running status
+            running = 1 if status.get("running", False) else 0
+            metrics.append("# HELP fan_controller_running Fan controller running status (1=running, 0=stopped)")
+            metrics.append("# TYPE fan_controller_running gauge")
+            metrics.append(f"fan_controller_running {running}")
+
+            self.wfile.write("\n".join(metrics).encode() + b"\n")
         else:
             self.send_response(404)
             self.end_headers()
@@ -653,6 +713,7 @@ class FanController:
         self.k8s_port: int = 2505
         self._discovery_counter = 0
         self._discovery_interval = 12  # Rediscover every 12 polling cycles (1 minute with 5s polls)
+        self.ip_to_node_map: dict = {}  # Mapping of pod IPs to Kubernetes node names
 
         # Load config file
         self.config_path = config_path or "/etc/sipeed-cm5-fancontrol/fancontrol.conf"
@@ -877,13 +938,16 @@ class FanController:
         try:
             from k8s_discovery import get_peers_with_discovery
 
-            all_peers = get_peers_with_discovery(
+            all_peers, ip_to_node = get_peers_with_discovery(
                 static_peers=self.k8s_static_peers,
                 enable_k8s_discovery=True,
                 k8s_namespace=self.k8s_namespace,
                 k8s_label_selector=self.k8s_label_selector,
                 k8s_port=self.k8s_port,
             )
+
+            # Update IP-to-node mapping
+            self.ip_to_node_map = ip_to_node
 
             # Only log if peers changed
             if set(all_peers) != set(self.peers):
@@ -1169,7 +1233,7 @@ def main():
             controller.k8s_port = 2505
 
             # Do initial discovery
-            all_peers = get_peers_with_discovery(
+            all_peers, ip_to_node = get_peers_with_discovery(
                 static_peers=static_peers,
                 enable_k8s_discovery=True,
                 k8s_namespace=args.k8s_namespace,
@@ -1177,7 +1241,11 @@ def main():
                 k8s_port=2505,
             )
             controller.peers = all_peers
-            logger.info("Using Kubernetes discovery: %d total peers (will rediscover every ~1 min)", len(all_peers))
+            controller.ip_to_node_map = ip_to_node
+            logger.info(
+                "Using Kubernetes discovery: %d total peers (will rediscover every ~1 min)",
+                len(all_peers),
+            )
         except ImportError as e:
             logger.warning("Kubernetes discovery failed: %s", e)
             logger.warning("Falling back to static peers")

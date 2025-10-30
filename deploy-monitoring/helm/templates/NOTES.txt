@@ -1,0 +1,41 @@
+========================================
+Sipeed CM5 Monitoring Stack Installed!
+========================================
+
+📊 Your monitoring stack is now running in namespace {{ .Release.Namespace }}
+
+🌐 Access Grafana:
+
+  1. Get any node IP:
+     kubectl get nodes -o wide
+
+  2. Access Grafana at:
+{{- if eq .Values.grafana.service.type "NodePort" }}
+     http://<NODE-IP>:{{ .Values.grafana.service.nodePort }}
+{{- else }}
+     kubectl port-forward -n {{ .Release.Namespace }} svc/grafana {{ .Values.grafana.service.port }}:{{ .Values.grafana.service.port }}
+     Then visit: http://localhost:{{ .Values.grafana.service.port }}
+{{- end }}
+
+  3. Login credentials:
+     Username: {{ .Values.grafana.adminUser }}
+     Password: {{ .Values.grafana.adminPassword }}
+
+  ⚠️  IMPORTANT: Change the default password after first login!
+
+📈 Pre-installed Dashboard:
+  "Sipeed CM5 - Temperature & Fan Control"
+  
+  Shows:
+  - CPU temperature per node (time series)
+  - Current fan speed (gauge)
+  - Fan speed history (graph)
+  - All node temperatures (bar chart)
+
+🔍 Verify Installation:
+  kubectl get pods -n {{ .Release.Namespace }}
+
+📚 Documentation:
+  https://github.com/Mi-Q/sipeed-cm5-fancontrol/tree/main/deploy-monitoring
+
+Happy monitoring! 🎉

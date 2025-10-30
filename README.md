@@ -33,6 +33,7 @@ Reboot after making this change for k3s to function properly.
 
 - `deploy-systemd/` - Systemd service implementation for direct installation on Raspberry Pi
 - `deploy-kubernetes/` - Kubernetes deployment using Helm charts for cluster environments
+- `deploy-monitoring/` - Grafana + Prometheus monitoring stack for visualizing temperatures and fan speed
 
 ## Features
 
@@ -120,6 +121,25 @@ Includes:
 - Automatic peer rediscovery
 - Hardware access with lgpio
 - Monitoring and troubleshooting
+
+### 3. Monitoring Stack (Grafana + Prometheus)
+
+**Quick Install:**
+```bash
+cd deploy-monitoring
+./install.sh sipeed-cm5-fancontrol
+```
+
+Access Grafana at `http://<NODE-IP>:30300` (default credentials: admin/admin123)
+
+**📊 Features:**
+- Real-time temperature monitoring for all nodes
+- Fan speed gauge and historical graphs
+- Pre-configured dashboard with 4 visualization panels
+- 15-day metric retention
+- Auto-refresh every 5 seconds
+
+**📖 For detailed documentation, see [deploy-monitoring/README.md](./deploy-monitoring/README.md)**
 
 ## Development
 

@@ -1,0 +1,117 @@
+# Default values for sipeed-monitoring
+# Monitoring stack for Sipeed CM5 Fan Control
+
+prometheus:
+  image:
+    repository: prom/prometheus
+    tag: v2.48.0
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  service:
+    port: 9090
+  retention: 15d  # Keep metrics for 15 days
+  scrapeInterval: 15s  # Scrape metrics every 15 seconds
+  
+  # Storage for Prometheus data
+  persistence:
+    enabled: true
+    size: 8Gi
+    storageClass: local-path  # k3s default storage class
+  
+  # Scrape configuration
+  scrapeConfigs:
+    # Scrape temperature exporters from all nodes
+    - job_name: 'sipeed-temp-exporter'
+      metrics_path: '/metrics'
+      kubernetes_sd_configs:
+        - role: pod
+          namespaces:
+            names:
+              - sipeed-cm5-fancontrol
+      relabel_configs:
+        # Only scrape pods with the temp exporter label
+        - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+          action: keep
+          regex: sipeed-temp-exporter
+        # Use the pod IP as the target
+        - source_labels: [__meta_kubernetes_pod_ip]
+          target_label: __address__
+          replacement: '$1:2505'
+        # Add node name as a label
+        - source_labels: [__meta_kubernetes_pod_node_name]
+          target_label: node
+        # Add pod name as a label
+        - source_labels: [__meta_kubernetes_pod_name]
+          target_label: pod
+        # Add instance label with hostname
+        - source_labels: [__meta_kubernetes_pod_node_name]
+          target_label: instance
+    
+    # Scrape fan controller status
+    - job_name: 'sipeed-fan-controller'
+      metrics_path: '/metrics'
+      kubernetes_sd_configs:
+        - role: pod
+          namespaces:
+            names:
+              - sipeed-cm5-fancontrol
+      relabel_configs:
+        # Only scrape pods with the fan controller label
+        - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+          action: keep
+          regex: sipeed-fan-controller
+        # Use the pod IP as the target
+        - source_labels: [__meta_kubernetes_pod_ip]
+          target_label: __address__
+          replacement: '$1:2506'
+        # Add node name as a label
+        - source_labels: [__meta_kubernetes_pod_node_name]
+          target_label: node
+        # Add pod name as a label
+        - source_labels: [__meta_kubernetes_pod_name]
+          target_label: pod
+        # Add instance label with node name
+        - source_labels: [__meta_kubernetes_pod_node_name]
+          target_label: instance
+
+grafana:
+  image:
+    repository: grafana/grafana
+    tag: 10.2.2
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  service:
+    type: NodePort
+    port: 3000
+    nodePort: 30300  # Access Grafana at http://<node-ip>:30300
+  
+  # Admin credentials (change these!)
+  adminUser: admin
+  adminPassword: admin123
+  
+  # Storage for Grafana data (dashboards, settings, etc.)
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClass: local-path
+  
+  # Prometheus datasource configuration
+  datasources:
+    prometheus:
+      name: Prometheus
+      type: prometheus
+      url: http://sipeed-prometheus:9090
+      access: proxy
+      isDefault: true

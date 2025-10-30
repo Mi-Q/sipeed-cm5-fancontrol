@@ -1,0 +1,6 @@
+apiVersion: v2
+name: sipeed-monitoring
+description: Monitoring stack for Sipeed CM5 Fan Control (Grafana + Prometheus)
+type: application
+version: 0.3.0
+appVersion: "0.3.0"
