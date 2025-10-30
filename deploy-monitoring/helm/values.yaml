@@ -28,6 +28,7 @@ prometheus:
   scrapeConfigs:
     # Scrape temperature exporters from all nodes
     - job_name: 'sipeed-temp-exporter'
+      metrics_path: '/metrics'
       kubernetes_sd_configs:
         - role: pod
           namespaces:
@@ -54,6 +55,7 @@ prometheus:
     
     # Scrape fan controller status
     - job_name: 'sipeed-fan-controller'
+      metrics_path: '/metrics'
       kubernetes_sd_configs:
         - role: pod
           namespaces:
@@ -74,6 +76,9 @@ prometheus:
         # Add pod name as a label
         - source_labels: [__meta_kubernetes_pod_name]
           target_label: pod
+        # Add instance label with node name
+        - source_labels: [__meta_kubernetes_pod_node_name]
+          target_label: instance
 
 grafana:
   image:

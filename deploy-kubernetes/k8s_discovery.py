@@ -25,11 +25,11 @@ def discover_temp_exporter_pods(
     namespace: Optional[str] = None,
     label_selector: str = "app.kubernetes.io/name=sipeed-temp-exporter",
     port: int = 2505,
-) -> List[str]:
+) -> tuple[List[str], dict]:
     """Discover temperature exporter pods via Kubernetes API.
 
     Uses the Kubernetes service account to query the API for pods matching
-    the label selector. Returns list of URLs to poll.
+    the label selector. Returns list of URLs to poll and IP-to-node mapping.
 
     Args:
         namespace: Kubernetes namespace (default: current pod's namespace)
@@ -37,11 +37,12 @@ def discover_temp_exporter_pods(
         port: Port number for temp exporter service
 
     Returns:
-        List[str]: List of URLs (e.g., ['http://10.42.0.5:2505/temp', ...])
+        tuple: (List of URLs, dict mapping pod IPs to node names)
+               e.g., (['http://10.42.0.5:2505/temp', ...], {'10.42.0.5': 'worker-1'})
     """
     if not is_running_in_kubernetes():
         logger.debug("Not running in Kubernetes, skipping discovery")
-        return []
+        return [], {}
 
     try:
         # Import kubernetes module (only when needed)
@@ -65,6 +66,7 @@ def discover_temp_exporter_pods(
         )
 
         urls = []
+        ip_to_node = {}
         for pod in pods.items:
             # Only include running pods
             if pod.status.phase != "Running":
@@ -77,20 +79,30 @@ def discover_temp_exporter_pods(
                 logger.debug("Skipping pod %s (no IP assigned)", pod.metadata.name)
                 continue
 
+            # Get node name
+            node_name = pod.spec.node_name
+            if node_name:
+                ip_to_node[pod_ip] = node_name
+
             # Build URL
             url = f"http://{pod_ip}:{port}/temp"
             urls.append(url)
-            logger.debug("Discovered pod: %s -> %s", pod.metadata.name, url)
+            logger.debug(
+                "Discovered pod: %s on node %s -> %s",
+                pod.metadata.name,
+                node_name,
+                url,
+            )
 
         logger.info("Discovered %d temp exporter pods", len(urls))
-        return urls
+        return urls, ip_to_node
 
     except ImportError:
         logger.warning("kubernetes Python module not available, install with: pip install kubernetes")
-        return []
+        return [], {}
     except Exception as e:
         logger.error("Failed to discover pods via Kubernetes API: %s", e)
-        return []
+        return [], {}
 
 
 def get_peers_with_discovery(
@@ -99,7 +111,7 @@ def get_peers_with_discovery(
     k8s_namespace: Optional[str] = None,
     k8s_label_selector: str = "app.kubernetes.io/name=sipeed-temp-exporter",
     k8s_port: int = 2505,
-) -> List[str]:
+) -> tuple[List[str], dict]:
     """Get peer list with optional Kubernetes auto-discovery.
 
     Combines static peer configuration with dynamic Kubernetes discovery.
@@ -113,18 +125,20 @@ def get_peers_with_discovery(
         k8s_port: Port number for discovered pods
 
     Returns:
-        List[str]: Combined list of peers (discovered + static)
+        tuple: (Combined list of peers, dict mapping IPs to node names)
     """
     peers = list(static_peers)  # Start with static peers
+    ip_to_node = {}
 
     # Add Kubernetes-discovered peers if enabled and running in K8s
     if enable_k8s_discovery and is_running_in_kubernetes():
-        discovered = discover_temp_exporter_pods(
+        discovered, node_map = discover_temp_exporter_pods(
             namespace=k8s_namespace,
             label_selector=k8s_label_selector,
             port=k8s_port,
         )
         peers.extend(discovered)
+        ip_to_node.update(node_map)
         logger.info(
             "Total peers: %d static + %d discovered = %d",
             len(static_peers),
@@ -132,4 +146,4 @@ def get_peers_with_discovery(
             len(peers),
         )
 
-    return peers
+    return peers, ip_to_node
