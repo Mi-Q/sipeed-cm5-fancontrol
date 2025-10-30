@@ -137,6 +137,28 @@ class StatusHTTPHandler(BaseHTTPRequestHandler):
             metrics.append("# TYPE fan_duty_percent gauge")
             metrics.append(f"fan_duty_percent {duty:.1f}")
 
+            # Individual node temperatures
+            temperatures = status.get("temperatures", {})
+            if temperatures:
+                metrics.append("# HELP node_temperature_celsius Node CPU temperature in Celsius")
+                metrics.append("# TYPE node_temperature_celsius gauge")
+                for node_name, temp in temperatures.items():
+                    if temp is not None:
+                        # Clean up node name for use as label
+                        # "local" stays as is, URLs get hostname extracted
+                        if node_name == "local":
+                            instance = "master"
+                        elif node_name.startswith("http://"):
+                            # Extract IP from URL like "http://10.42.4.19:2505/temp"
+                            import re
+
+                            match = re.search(r"//([^:]+)", node_name)
+                            instance = match.group(1) if match else "unknown"
+                        else:
+                            instance = node_name.replace(".", "_").replace(":", "_")
+
+                        metrics.append(f'node_temperature_celsius{{instance="{instance}"}} {temp:.3f}')
+
             # Aggregate temperature metric
             agg_temp = status.get("aggregate_temp_celsius")
             if agg_temp is not None:
