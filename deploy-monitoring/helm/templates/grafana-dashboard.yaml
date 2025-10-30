@@ -111,8 +111,8 @@ data:
             {
               "datasource": "Prometheus",
               "editorMode": "code",
-              "expr": "node_temperature_celsius",
-              "legendFormat": "{{`{{instance}}`}}",
+              "expr": "node_temperature_celsius{job=\"sipeed-fan-controller\"}",
+              "legendFormat": "{{`{{exported_instance}}`}}",
               "range": true,
               "refId": "A"
             }
@@ -322,8 +322,8 @@ data:
             {
               "datasource": "Prometheus",
               "editorMode": "code",
-              "expr": "node_temperature_celsius",
-              "legendFormat": "{{`{{instance}}`}}",
+              "expr": "node_temperature_celsius{job=\"sipeed-fan-controller\"}",
+              "legendFormat": "{{`{{exported_instance}}`}}",
               "range": true,
               "refId": "A"
             }

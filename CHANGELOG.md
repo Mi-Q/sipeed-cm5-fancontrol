@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2025-10-30
+
+### Fixed
+- **Grafana dashboard duplicate node entries**
+  - Dashboard now filters to show only fan controller metrics with hostnames
+  - Eliminated duplicate temperature readings from temp exporter pods
+  - Uses `job="sipeed-fan-controller"` filter in Prometheus queries
+  - Legend displays `exported_instance` label showing clean hostnames (e.g., nanocluster1-4)
+  - Fixed "CPU Temperature per Node" and "Current Temperatures" panels
+
 ## [0.3.0] - 2025-01-30
 
 ### Added
