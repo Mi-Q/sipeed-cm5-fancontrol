@@ -16,13 +16,14 @@ spec:
       labels:
         app.kubernetes.io/name: sipeed-temp-exporter
     spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: node-role.kubernetes.io/control-plane
-                operator: DoesNotExist
+      # Remove nodeAffinity to run on ALL nodes including control-plane
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
       containers:
         - name: temp-exporter
           image: "{{ .Values.exporter.image.repository }}:{{ .Values.exporter.image.tag }}"
@@ -36,10 +37,24 @@ spec:
             - name: thermal
               mountPath: /sys/class/thermal
               readOnly: true
+            - name: hwmon
+              mountPath: /sys/class/hwmon
+              readOnly: true
+            - name: proc
+              mountPath: /proc
+              readOnly: true
           resources:
             {{- toYaml .Values.exporter.resources | nindent 12 }}
       volumes:
         - name: thermal
           hostPath:
             path: /sys/class/thermal
+            type: Directory
+        - name: hwmon
+          hostPath:
+            path: /sys/class/hwmon
+            type: DirectoryOrCreate
+        - name: proc
+          hostPath:
+            path: /proc
             type: Directory
