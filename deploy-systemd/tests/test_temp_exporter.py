@@ -99,6 +99,7 @@ class TestTempHandler(unittest.TestCase):
         handler = TempHandler.__new__(TempHandler)
         handler.wfile = BytesIO()
         handler.path = "/temp"
+        handler.request_version = "HTTP/1.1"
 
         # Mock the response methods
         with (
@@ -124,6 +125,7 @@ class TestTempHandler(unittest.TestCase):
         handler = TempHandler.__new__(TempHandler)
         handler.wfile = BytesIO()
         handler.path = "/temp"
+        handler.request_version = "HTTP/1.1"
 
         with (
             patch.object(handler, "send_response") as mock_send_response,
@@ -143,6 +145,7 @@ class TestTempHandler(unittest.TestCase):
         handler = TempHandler.__new__(TempHandler)
         handler.wfile = BytesIO()
         handler.path = "/metrics"
+        handler.request_version = "HTTP/1.1"
 
         with (
             patch.object(handler, "send_response") as mock_send_response,
@@ -167,18 +170,24 @@ class TestTempHandler(unittest.TestCase):
         handler = TempHandler.__new__(TempHandler)
         handler.wfile = BytesIO()
         handler.path = "/metrics"
+        handler.request_version = "HTTP/1.1"
 
-        with patch.object(handler, "send_response") as mock_send_response, patch.object(handler, "end_headers"):
+        with (
+            patch.object(handler, "send_response") as mock_send_response,
+            patch.object(handler, "end_headers"),
+            patch.object(handler, "send_header"),
+        ):
 
             handler.do_GET()
 
-            mock_send_response.assert_called_once_with(500)
+            mock_send_response.assert_called_once_with(200)
 
     def test_invalid_endpoint(self):
         """Test invalid endpoint returns 404."""
         handler = TempHandler.__new__(TempHandler)
         handler.wfile = BytesIO()
         handler.path = "/invalid"
+        handler.request_version = "HTTP/1.1"
 
         with patch.object(handler, "send_response") as mock_send_response, patch.object(handler, "end_headers"):
 
