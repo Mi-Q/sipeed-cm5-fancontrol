@@ -167,7 +167,7 @@ data:
               "datasource": "Prometheus",
               "editorMode": "code",
               "expr": "node_temperature_celsius",
-              "legendFormat": "{{instance}} - {{sensor}}",
+              "legendFormat": "{{`{{instance}}`}} - {{`{{sensor}}`}}",
               "range": true,
               "refId": "A"
             }
@@ -233,7 +233,7 @@ data:
               "datasource": "Prometheus",
               "editorMode": "code",
               "expr": "node_temperature_celsius",
-              "legendFormat": "{{instance}}-{{sensor}}",
+              "legendFormat": "{{`{{instance}}`}}-{{`{{sensor}}`}}",
               "range": true,
               "refId": "A"
             }
@@ -361,7 +361,7 @@ data:
               "datasource": "Prometheus",
               "editorMode": "code",
               "expr": "node_memory_bytes{type=~\"memtotal|memavailable|cached|buffers\"}",
-              "legendFormat": "{{instance}} - {{type}}",
+              "legendFormat": "{{`{{instance}}`}} - {{`{{type}}`}}",
               "range": true,
               "refId": "A"
             }
@@ -453,7 +453,7 @@ data:
               "datasource": "Prometheus",
               "editorMode": "code",
               "expr": "node_load_average",
-              "legendFormat": "{{instance}} - {{period}}",
+              "legendFormat": "{{`{{instance}}`}} - {{`{{period}}`}}",
               "range": true,
               "refId": "A"
             }
@@ -534,7 +534,7 @@ data:
               "datasource": "Prometheus",
               "editorMode": "code",
               "expr": "node_filesystem_use_percent",
-              "legendFormat": "{{instance}} - {{mountpoint}}",
+              "legendFormat": "{{`{{instance}}`}} - {{`{{mountpoint}}`}}",
               "range": true,
               "refId": "A"
             }
@@ -631,7 +631,7 @@ data:
               "datasource": "Prometheus",
               "editorMode": "code",
               "expr": "rate(node_network_receive_bytes_total{interface!~\"lo|veth.*\"}[5m])",
-              "legendFormat": "{{instance}}-{{interface}} RX",
+              "legendFormat": "{{`{{instance}}`}}-{{`{{interface}}`}} RX",
               "range": true,
               "refId": "A"
             },
@@ -639,7 +639,7 @@ data:
               "datasource": "Prometheus",
               "editorMode": "code",
               "expr": "rate(node_network_transmit_bytes_total{interface!~\"lo|veth.*\"}[5m])",
-              "legendFormat": "{{instance}}-{{interface}} TX",
+              "legendFormat": "{{`{{instance}}`}}-{{`{{interface}}`}} TX",
               "range": true,
               "refId": "B"
             }
@@ -714,7 +714,7 @@ data:
               "datasource": "Prometheus",
               "editorMode": "code",
               "expr": "node_uptime_seconds",
-              "legendFormat": "{{instance}}",
+              "legendFormat": "{{`{{instance}}`}}",
               "range": true,
               "refId": "A"
             }
@@ -788,7 +788,7 @@ data:
               "datasource": "Prometheus",
               "editorMode": "code",
               "expr": "node_temperature_sensor_available",
-              "legendFormat": "{{instance}} - {{sensor}}",
+              "legendFormat": "{{`{{instance}}`}} - {{`{{sensor}}`}}",
               "range": true,
               "refId": "A"
             }

@@ -57,5 +57,9 @@ spec:
         configMap:
           name: grafana-dashboards-config
       - name: dashboards
-        configMap:
-          name: grafana-dashboard-sipeed
+        projected:
+          sources:
+          - configMap:
+              name: grafana-dashboard-sipeed
+          - configMap:
+              name: grafana-dashboard-sipeed-enhanced
