@@ -6,6 +6,7 @@ Contact: michael@kuppinger.eu
 Licensed under the MIT License - see LICENSE file for details.
 
 Version: 0.4.0
+Build: Trigger CI rebuild for enhanced monitoring deployment
 
 Endpoints:
 - GET /temp    -> returns plain text CPU temperature in Celsius (e.g. '42.5')
