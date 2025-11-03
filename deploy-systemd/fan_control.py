@@ -970,22 +970,7 @@ class FanController:
                 self._rediscover_peers()
                 self._discovery_counter = 0
 
-        # Check if mode is manual
-        if self.mode == "manual":
-            duty = self.manual_speed
-            # Apply manual duty cycle
-            if self.last_duty is None or abs(duty - self.last_duty) >= 1.0:
-                try:
-                    self.pwm.ChangeDutyCycle(duty)
-                    logger.info("Manual mode: duty %.1f%%", duty)
-                except AttributeError as e:
-                    logger.warning("Failed to set duty cycle: %s", e)
-            self.last_duty = duty
-            self.last_temps = {}
-            self.last_aggregate_temp = None
-            return {"mode": "manual", "duty": duty}
-
-        # Auto mode: read temperature and adjust fan speed
+        # Read temperature (always, for monitoring)
         local_t = read_cpu_temp(self.simulate_temp)
         if local_t is None:
             logger.error("Failed to read local CPU temperature")
@@ -1029,7 +1014,24 @@ class FanController:
 
         self.last_aggregate_temp = t
 
-        # Calculate duty based on configured fan curve
+        # Log all individual temperatures
+        temp_strs = [f"{host}={temp:.1f}°C" if temp else f"{host}=N/A" for host, temp in temps.items()]
+        current_duty_str = f"{self.last_duty:.1f}%" if self.last_duty is not None else "N/A"
+        logger.info("Temperatures: %s | Fan: %s", ", ".join(temp_strs), current_duty_str)
+
+        # Check if mode is manual - use fixed duty, but still log temperatures
+        if self.mode == "manual":
+            duty = self.manual_speed
+            if self.last_duty is None or abs(duty - self.last_duty) >= 1.0:
+                try:
+                    self.pwm.ChangeDutyCycle(duty)
+                    logger.info("Manual mode: duty %.1f%% (aggregate temp: %.1f°C)", duty, t)
+                except AttributeError as e:
+                    logger.warning("Failed to set duty cycle: %s", e)
+            self.last_duty = duty
+            return {"mode": "manual", "duty": duty, "aggregated_temp": t, "per_host": temps}
+
+        # Auto mode: Calculate duty based on configured fan curve
         if self.fan_curve == "step":
             duty = self._calculate_step_duty(t)
         else:
@@ -1047,11 +1049,6 @@ class FanController:
 
         # Apply minimum operating speed threshold to avoid dead zone
         duty = self._apply_min_operating_speed(duty, t)
-
-        # Log all individual temperatures with current fan duty cycle
-        temp_strs = [f"{host}={temp:.1f}°C" if temp else f"{host}=N/A" for host, temp in temps.items()]
-        current_duty_str = f"{self.last_duty:.1f}%" if self.last_duty is not None else "N/A"
-        logger.info("Temperatures: %s | Fan: %s", ", ".join(temp_strs), current_duty_str)
 
         # apply small hysteresis: only change if >1% difference
         if self.last_duty is None or abs(duty - self.last_duty) >= 1.0:
