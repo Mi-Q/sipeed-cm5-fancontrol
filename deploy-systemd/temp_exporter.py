@@ -30,7 +30,7 @@ import os
 import re
 import socketserver
 import subprocess
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("temp_exporter")
@@ -211,7 +211,7 @@ def read_load_avg() -> Tuple[float, float, float]:
     return 0.0, 0.0, 0.0
 
 
-def read_disk_stats() -> List[Dict[str, any]]:
+def read_disk_stats() -> List[Dict[str, Any]]:
     """Read disk usage statistics.
 
     Returns:
