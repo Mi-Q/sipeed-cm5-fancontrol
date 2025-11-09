@@ -66,10 +66,10 @@ data:
     STEP_HYSTERESIS={{ .Values.controller.config.stepHysteresis | default 2 }}
     
     # PWM frequency (Hz)
-    # Standard 4-pin PWM fans: 25000 Hz (25 kHz, Intel PWM specification)
-    # Older/simple fans: 50 Hz
-    # Note: Not all GPIO libraries support high frequencies in containers
-    PWM_FREQUENCY={{ .Values.controller.config.pwmFrequency | default 25000 }}
+    # lgpio-compatible frequency: 1000 Hz (1 kHz) works reliably with PWM fans and lgpio
+    # Note: Higher frequencies (25 kHz Intel spec) are not supported by lgpio in containers
+    # PWM fans typically work well from 1 kHz to 25 kHz
+    PWM_FREQUENCY={{ .Values.controller.config.pwmFrequency | default 1000 }}
     
     # PWM signal inversion for NanoCluster board
     # The NanoCluster board uses an open-drain MOSFET configuration:

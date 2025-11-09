@@ -14,7 +14,7 @@ class TestParseArgs(unittest.TestCase):
         with patch("sys.argv", ["fan_control.py"]):
             args = parse_args()
             self.assertEqual(args.pin, 13)
-            self.assertEqual(args.freq, 25000)
+            self.assertEqual(args.freq, 1000)
             self.assertEqual(args.poll, 5)
             self.assertEqual(args.min_duty, 30.0)
             self.assertEqual(args.min_temp, 45.0)
@@ -119,7 +119,7 @@ class TestFanControllerIntegration(unittest.TestCase):
         """Test duty cycle behavior at different temperatures."""
         controller = FanController(
             pin=13,
-            freq=25000,
+            freq=1000,
             poll=5,
             min_duty=30.0,
             min_temp=45.0,

@@ -51,7 +51,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Dict, List, Optional
 
 DEFAULT_PIN = 13
-DEFAULT_FREQ = 25000  # 25 kHz is standard for 4-pin PWM fans (Noctua spec)
+DEFAULT_FREQ = 1000  # 1 kHz works with lgpio and is compatible with PWM fans
 DEFAULT_POLL_SECONDS = 5
 DEFAULT_MIN_DUTY = 30.0  # Noctua fans are very silent, can run continuously at 30%
 DEFAULT_MIN_TEMP = 45.0
