@@ -1040,8 +1040,9 @@ class FanController:
                     except (OSError, ValueError, subprocess.SubprocessError) as e:
                         logger.debug("Error polling %s: %s", peer, e)
 
-        # If no peer temps available, use local temp as fallback
-        if not temps:
+        # If no peer temps succeeded, use local temp as fallback
+        peer_temps_succeeded = any(v is not None for v in temps.values())
+        if not peer_temps_succeeded:
             temps = {"local": local_t}
 
         # Store temperatures for status endpoint (include local for status endpoint)
