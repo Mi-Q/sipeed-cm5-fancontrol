@@ -21,7 +21,7 @@ data:
     # Auto mode temperature thresholds (Celsius)
     # Only used when MODE=auto
     TEMP_LOW={{ .Values.controller.config.tempLow | default 45 }}
-    TEMP_HIGH={{ .Values.controller.config.tempHigh | default 60 }}
+    TEMP_HIGH={{ .Values.controller.config.tempHigh | default 65 }}
     
     # Auto mode fan speed percentages (0-100)
     # Only used when MODE=auto
@@ -75,5 +75,5 @@ data:
     # The NanoCluster board uses an open-drain MOSFET configuration:
     # - true: Invert PWM (0% = 100% speed, 100% = 0% speed) - REQUIRED for NanoCluster
     # - false: Normal PWM (0% = 0% speed, 100% = 100% speed) - For standard PWM boards
-    # Default: true (NanoCluster hardware)
+    # Default: true (NanoCluster hardware requires inversion)
     PWM_INVERTED={{ .Values.controller.config.pwmInverted | default "true" }}

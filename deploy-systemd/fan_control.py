@@ -55,7 +55,7 @@ DEFAULT_FREQ = 1000  # 1 kHz works with lgpio and is compatible with PWM fans
 DEFAULT_POLL_SECONDS = 5
 DEFAULT_MIN_DUTY = 30.0  # Noctua fans are very silent, can run continuously at 30%
 DEFAULT_MIN_TEMP = 45.0
-DEFAULT_MAX_TEMP = 60.0
+DEFAULT_MAX_TEMP = 65.0
 
 logger = logging.getLogger("sipeed-cm5-fancontrol")
 
@@ -83,7 +83,7 @@ def load_config(
         "step_hysteresis": 2.0,
         "fan_min_operating_speed": 30.0,  # Noctua fans are very silent, 30% is good baseline
         "fan_stop_temp": 0.0,  # Disabled - fan always runs at minimum speed
-        "pwm_frequency": DEFAULT_FREQ,  # 25 kHz for 4-pin PWM fans
+        "pwm_frequency": DEFAULT_FREQ,  # 1 kHz for lgpio compatibility
         "pwm_inverted": True,  # NanoCluster board uses open-drain MOSFET (inverted PWM)
     }
 
@@ -1017,7 +1017,8 @@ class FanController:
             logger.error("Failed to read local CPU temperature")
             return None
 
-        temps = {"local": local_t}
+        # Start with empty temps dict - local temp is redundant with control-plane exporter
+        temps = {}
 
         # poll peers in parallel
         if self.peers:
@@ -1039,8 +1040,12 @@ class FanController:
                     except (OSError, ValueError, subprocess.SubprocessError) as e:
                         logger.debug("Error polling %s: %s", peer, e)
 
-        # Store temperatures for status endpoint
-        self.last_temps = temps
+        # If no peer temps available, use local temp as fallback
+        if not temps:
+            temps = {"local": local_t}
+
+        # Store temperatures for status endpoint (include local for status endpoint)
+        self.last_temps = {**{"local": local_t}, **temps}
 
         # compute aggregate temperature used to decide fan speed
         valid_temps = [v for v in temps.values() if v is not None]
@@ -1055,8 +1060,21 @@ class FanController:
 
         self.last_aggregate_temp = t
 
-        # Log all individual temperatures
-        temp_strs = [f"{host}={temp:.1f}°C" if temp else f"{host}=N/A" for host, temp in temps.items()]
+        # Log all individual temperatures with node names instead of IPs
+        temp_strs = []
+        for host, temp in temps.items():
+            # Map IP addresses to node names for better readability
+            display_name = host
+            if host.startswith("http://"):
+                # Extract IP from URL like "http://10.42.1.67:2505/temp"
+                ip_part = host.split("//")[1].split(":")[0]
+                display_name = self.ip_to_node_map.get(ip_part, host)
+
+            if temp is not None:
+                temp_strs.append(f"{display_name}={temp:.1f}°C")
+            else:
+                temp_strs.append(f"{display_name}=N/A")
+
         current_duty_str = f"{self.last_duty:.1f}%" if self.last_duty is not None else "N/A"
         logger.info("Temperatures: %s | Fan: %s", ", ".join(temp_strs), current_duty_str)
 
