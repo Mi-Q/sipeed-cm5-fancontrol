@@ -112,8 +112,10 @@ def load_config(
             "fan_curve": section.get("FAN_CURVE", "exponential").lower(),
             "step_zones": section.get("STEP_ZONES", "35:0,45:30,55:60,65:100"),
             "step_hysteresis": float(section.get("STEP_HYSTERESIS", "2")),
-            "fan_min_operating_speed": float(section.get("FAN_MIN_OPERATING_SPEED", "10")),
-            "fan_stop_temp": float(section.get("FAN_STOP_TEMP", "20")),
+            "fan_min_operating_speed": float(
+                section.get("FAN_MIN_OPERATING_SPEED", str(defaults["fan_min_operating_speed"]))
+            ),
+            "fan_stop_temp": float(section.get("FAN_STOP_TEMP", str(defaults["fan_stop_temp"]))),
             "pwm_frequency": int(section.get("PWM_FREQUENCY", str(DEFAULT_FREQ))),
             "pwm_inverted": section.get("PWM_INVERTED", "true").lower() in ("true", "yes", "1"),
         }
