@@ -1076,6 +1076,9 @@ class FanController:
             else:
                 temp_strs.append(f"{display_name}=N/A")
 
+        # Sort by node name for consistent ordering
+        temp_strs.sort()
+
         current_duty_str = f"{self.last_duty:.1f}%" if self.last_duty is not None else "N/A"
         logger.info("Temperatures: %s | Fan: %s", ", ".join(temp_strs), current_duty_str)
 
