@@ -14,9 +14,9 @@ class TestParseArgs(unittest.TestCase):
         with patch("sys.argv", ["fan_control.py"]):
             args = parse_args()
             self.assertEqual(args.pin, 13)
-            self.assertEqual(args.freq, 50)
+            self.assertEqual(args.freq, 25000)
             self.assertEqual(args.poll, 5)
-            self.assertEqual(args.min_duty, 25.0)
+            self.assertEqual(args.min_duty, 30.0)
             self.assertEqual(args.min_temp, 45.0)
             self.assertEqual(args.max_temp, 60.0)
             self.assertFalse(args.dry_run)
@@ -119,9 +119,9 @@ class TestFanControllerIntegration(unittest.TestCase):
         """Test duty cycle behavior at different temperatures."""
         controller = FanController(
             pin=13,
-            freq=50,
+            freq=25000,
             poll=5,
-            min_duty=25.0,
+            min_duty=30.0,
             min_temp=45.0,
             max_temp=60.0,
             dry_run=True,
@@ -132,7 +132,7 @@ class TestFanControllerIntegration(unittest.TestCase):
         mock_read_temp.return_value = 40.0
         result = controller.run_once()
         self.assertIsNotNone(result)
-        self.assertEqual(result["duty"], 25.0)
+        self.assertEqual(result["duty"], 30.0)
 
         # Test above maximum
         mock_read_temp.return_value = 70.0

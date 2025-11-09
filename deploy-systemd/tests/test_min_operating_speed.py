@@ -225,8 +225,8 @@ class TestConfigDefaults(unittest.TestCase):
     def test_defaults_when_config_missing(self):
         """Test that defaults are used when config file is missing."""
         controller = FanController(dry_run=True, config_path="/nonexistent/config.conf")
-        self.assertEqual(controller.fan_min_operating_speed, 10.0)
-        self.assertEqual(controller.fan_stop_temp, 20.0)
+        self.assertEqual(controller.fan_min_operating_speed, 30.0)
+        self.assertEqual(controller.fan_stop_temp, 0.0)
 
     def test_defaults_when_values_not_in_config(self):
         """Test defaults are used when values are not specified in config."""
@@ -235,8 +235,8 @@ class TestConfigDefaults(unittest.TestCase):
         config_file.write_text("MODE=auto\n")
 
         controller = FanController(dry_run=True, config_path=str(config_file))
-        self.assertEqual(controller.fan_min_operating_speed, 10.0)
-        self.assertEqual(controller.fan_stop_temp, 20.0)
+        self.assertEqual(controller.fan_min_operating_speed, 30.0)
+        self.assertEqual(controller.fan_stop_temp, 0.0)
 
 
 if __name__ == "__main__":

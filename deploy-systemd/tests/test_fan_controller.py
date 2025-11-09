@@ -51,18 +51,18 @@ class TestFanController(unittest.TestCase):
         """Test FanController initialization."""
         controller = FanController(
             pin=13,
-            freq=50,
+            freq=25000,
             poll=5,
-            min_duty=25.0,
+            min_duty=30.0,
             min_temp=45.0,
             max_temp=60.0,
             dry_run=True,
             simulate_temp=None,
         )
         self.assertEqual(controller.pin, 13)
-        self.assertEqual(controller.freq, 50)
+        self.assertEqual(controller.freq, 25000)
         self.assertEqual(controller.poll, 5)
-        self.assertEqual(controller.min_duty, 25.0)
+        self.assertEqual(controller.min_duty, 30.0)
         self.assertEqual(controller.min_temp, 45.0)
         self.assertEqual(controller.max_temp, 60.0)
         self.assertIsNotNone(controller.pwm)
