@@ -18,7 +18,7 @@ class TestParseArgs(unittest.TestCase):
             self.assertEqual(args.poll, 5)
             self.assertEqual(args.min_duty, 30.0)
             self.assertEqual(args.min_temp, 45.0)
-            self.assertEqual(args.max_temp, 60.0)
+            self.assertEqual(args.max_temp, 65.0)  # Updated default
             self.assertFalse(args.dry_run)
             self.assertIsNone(args.simulate_temp)
             self.assertEqual(args.peers, "")

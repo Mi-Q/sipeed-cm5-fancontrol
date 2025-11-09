@@ -64,7 +64,7 @@ class TestFanController(unittest.TestCase):
         self.assertEqual(controller.poll, 5)
         self.assertEqual(controller.min_duty, 30.0)
         self.assertEqual(controller.min_temp, 45.0)
-        self.assertEqual(controller.max_temp, 60.0)
+        self.assertEqual(controller.max_temp, 65.0)  # Updated default
         self.assertIsNotNone(controller.pwm)
         self.assertIsNotNone(controller.GPIO)
 
@@ -272,8 +272,8 @@ class TestFanController(unittest.TestCase):
     @patch("fan_control.read_cpu_temp")
     @patch("fan_control.read_remote_temp_http")
     def test_all_peers_fail_no_valid_temps(self, mock_http, mock_local):
-        """Test error when local succeeds but all peers fail leaving only one valid temp."""
-        # This tests a different path where we have peers configured
+        """Test that local temp is used as fallback when all peers fail."""
+        # When all peers fail, local temp is used as fallback
         mock_local.return_value = 50.0
         mock_http.return_value = None  # All peers fail
 
@@ -283,10 +283,10 @@ class TestFanController(unittest.TestCase):
         controller.start()
 
         result = controller.run_once()
-        # Should still work with just local temp
+        # Should still work with local temp as fallback
         self.assertIsNotNone(result)
+        # When all peers fail, "local" should be in per_host as fallback
         self.assertEqual(result["per_host"]["local"], 50.0)
-        self.assertIsNone(result["per_host"]["http://peer1:2505/temp"])
 
     @patch("fan_control.signal.signal")
     @patch("fan_control.time.sleep")

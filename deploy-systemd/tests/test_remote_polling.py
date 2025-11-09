@@ -151,14 +151,13 @@ class TestRemotePeerPolling(unittest.TestCase):
 
         result = controller.run_once()
         self.assertIsNotNone(result)
-        # Should have local + 3 peers (2 successful, 1 failed)
-        self.assertIn("local", result["per_host"])
-        self.assertEqual(result["per_host"]["local"], 50.0)
+        # Should have 3 peers (2 successful, 1 failed) - no "local" since peers exist
+        self.assertNotIn("local", result["per_host"])
         self.assertEqual(result["per_host"]["http://peer1:2505/temp"], 55.0)
         self.assertIsNone(result["per_host"]["http://peer2:2505/temp"])
         self.assertEqual(result["per_host"]["http://peer3:2505/temp"], 52.0)
-        # Aggregate should use valid temps only (50, 55, 52) = avg 52.333
-        self.assertAlmostEqual(result["aggregated_temp"], 52.333, places=2)
+        # Aggregate should use valid temps only (55, 52) = avg 53.5
+        self.assertAlmostEqual(result["aggregated_temp"], 53.5, places=2)
 
     @patch("fan_control.read_cpu_temp")
     @patch("fan_control.read_remote_temp_ssh")
@@ -184,9 +183,10 @@ class TestRemotePeerPolling(unittest.TestCase):
 
         result = controller.run_once()
         self.assertIsNotNone(result)
-        self.assertEqual(len(result["per_host"]), 3)
-        # Average of 48.0, 51.0, 49.5 = 49.5
-        self.assertAlmostEqual(result["aggregated_temp"], 49.5, places=1)
+        # Should have 2 peers (no "local" since peers exist and succeed)
+        self.assertEqual(len(result["per_host"]), 2)
+        # Average of 51.0, 49.5 = 50.25
+        self.assertAlmostEqual(result["aggregated_temp"], 50.25, places=1)
 
     @patch("fan_control.read_cpu_temp")
     @patch("fan_control.read_remote_temp_http")
