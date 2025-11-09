@@ -8,11 +8,24 @@ Licensed under the MIT License - see LICENSE file for details.
 
 Version: 0.2.0
 
+PWM Fan Support:
+- Supports 4-pin PWM fans (e.g., Noctua NF-A6x25 5V PWM)
+- PWM frequency: 25 kHz (standard for Intel PWM specification)
+- Wiring for Noctua 5V PWM on NanoCluster/CM5:
+  * Black (GND) → Leftmost UART pin (marked 'G' on bottom)
+  * Yellow (+5V) → Fan header '+' terminal
+  * Green (Tach) → Not connected (optional RPM feedback)
+  * Blue (PWM) → Fan header '-' terminal (connected to GPIO 13 via MOSFET)
+- **IMPORTANT**: PWM is INVERTED due to open-drain MOSFET configuration
+  * 0% duty cycle = 100% fan speed (MOSFET always on, pulls PWM low)
+  * 100% duty cycle = 0% fan speed (MOSFET always off, fan's pull-up keeps it high)
+  * This code handles the inversion automatically
+
 Features:
 - Read CPU temperature via `/usr/bin/vcgencmd measure_temp` (with fallback to
   `/sys/class/thermal/thermal_zone0/temp`).
 - Map temperature to PWM duty cycle with configurable thresholds.
-- Minimal duty cycle = 25%. 100% at or above max_temp (default 60C).
+- Minimal duty cycle = 20%. 100% at or above max_temp (default 60C).
 - Safe GPIO abstraction: uses RPi.GPIO if available, otherwise DummyGPIO.
 - Flags for dry-run and simulation for safe testing on non-RPi systems.
 
@@ -38,9 +51,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Dict, List, Optional
 
 DEFAULT_PIN = 13
-DEFAULT_FREQ = 50
+DEFAULT_FREQ = 25000  # 25 kHz is standard for 4-pin PWM fans (Noctua spec)
 DEFAULT_POLL_SECONDS = 5
-DEFAULT_MIN_DUTY = 25.0
+DEFAULT_MIN_DUTY = 30.0  # Noctua fans are very silent, can run continuously at 30%
 DEFAULT_MIN_TEMP = 45.0
 DEFAULT_MAX_TEMP = 60.0
 
@@ -68,8 +81,10 @@ def load_config(
         "fan_curve": "exponential",
         "step_zones": "35:0,45:30,55:60,65:100",
         "step_hysteresis": 2.0,
-        "fan_min_operating_speed": 10.0,
-        "fan_stop_temp": 20.0,
+        "fan_min_operating_speed": 30.0,  # Noctua fans are very silent, 30% is good baseline
+        "fan_stop_temp": 0.0,  # Disabled - fan always runs at minimum speed
+        "pwm_frequency": DEFAULT_FREQ,  # 25 kHz for 4-pin PWM fans
+        "pwm_inverted": True,  # NanoCluster board uses open-drain MOSFET (inverted PWM)
     }
 
     if not os.path.exists(config_path):
@@ -99,6 +114,8 @@ def load_config(
             "step_hysteresis": float(section.get("STEP_HYSTERESIS", "2")),
             "fan_min_operating_speed": float(section.get("FAN_MIN_OPERATING_SPEED", "10")),
             "fan_stop_temp": float(section.get("FAN_STOP_TEMP", "20")),
+            "pwm_frequency": int(section.get("PWM_FREQUENCY", str(DEFAULT_FREQ))),
+            "pwm_inverted": section.get("PWM_INVERTED", "true").lower() in ("true", "yes", "1"),
         }
     except Exception as e:
         logger.warning("Error loading config file: %s, using defaults", e)
@@ -730,6 +747,11 @@ class FanController:
         self.fan_min_operating_speed = 10.0
         self.fan_stop_temp = 20.0
 
+        # PWM configuration (NanoCluster board uses open-drain MOSFET)
+        self.pwm_inverted = self.config.get("pwm_inverted", True)
+        # Override PWM frequency from config if specified
+        self.freq = self.config.get("pwm_frequency", self.freq)
+
         # Override temperature thresholds from config if in auto mode
         if self.mode == "auto":
             self.min_temp = self.config["temp_low"]
@@ -790,6 +812,23 @@ class FanController:
             logger.error("Error parsing step zones '%s': %s, using defaults", zones_str, e)
             zones = [(35, 0), (45, 30), (55, 60), (65, 100)]
         return zones
+
+    def _apply_pwm_duty(self, duty: float) -> float:
+        """Apply PWM duty cycle, handling NanoCluster hardware inversion if configured.
+
+        NanoCluster board uses an open-drain MOSFET configuration where:
+        - 0% PWM duty = MOSFET always ON = Fan runs at 100%
+        - 100% PWM duty = MOSFET always OFF = Fan stops (0%)
+
+        Args:
+            duty: Desired logical duty cycle (0-100)
+
+        Returns:
+            Hardware duty cycle to send to PWM (inverted if pwm_inverted=True)
+        """
+        if self.pwm_inverted:
+            return 100.0 - duty
+        return duty
 
     def _calculate_step_duty(self, temp_c: float) -> float:
         """Calculate duty cycle using step curve with hysteresis.
@@ -1024,8 +1063,14 @@ class FanController:
             duty = self.manual_speed
             if self.last_duty is None or abs(duty - self.last_duty) >= 1.0:
                 try:
-                    self.pwm.ChangeDutyCycle(duty)
-                    logger.info("Manual mode: duty %.1f%% (aggregate temp: %.1f°C)", duty, t)
+                    hw_duty = self._apply_pwm_duty(duty)
+                    self.pwm.ChangeDutyCycle(hw_duty)
+                    if self.pwm_inverted:
+                        logger.info(
+                            "Manual mode: duty %.1f%% (HW inverted: %.1f%%, aggregate temp: %.1f°C)", duty, hw_duty, t
+                        )
+                    else:
+                        logger.info("Manual mode: duty %.1f%% (aggregate temp: %.1f°C)", duty, t)
                 except AttributeError as e:
                     logger.warning("Failed to set duty cycle: %s", e)
             self.last_duty = duty
@@ -1053,15 +1098,26 @@ class FanController:
         # apply small hysteresis: only change if >1% difference
         if self.last_duty is None or abs(duty - self.last_duty) >= 1.0:
             try:
-                # real PWM ChangeDutyCycle or Dummy implementation
-                self.pwm.ChangeDutyCycle(duty)
-                logger.info(
-                    "Aggregate temp (method=%s, curve=%s): %.1f°C -> Fan: %.1f%%",
-                    self.aggregate,
-                    self.fan_curve,
-                    t,
-                    duty,
-                )
+                # Apply PWM inversion for NanoCluster hardware if configured
+                hw_duty = self._apply_pwm_duty(duty)
+                self.pwm.ChangeDutyCycle(hw_duty)
+                if self.pwm_inverted:
+                    logger.info(
+                        "Aggregate temp (method=%s, curve=%s): %.1f°C -> Fan: %.1f%% (HW inverted: %.1f%%)",
+                        self.aggregate,
+                        self.fan_curve,
+                        t,
+                        duty,
+                        hw_duty,
+                    )
+                else:
+                    logger.info(
+                        "Aggregate temp (method=%s, curve=%s): %.1f°C -> Fan: %.1f%%",
+                        self.aggregate,
+                        self.fan_curve,
+                        t,
+                        duty,
+                    )
             except AttributeError as e:
                 logger.warning("Failed to set duty cycle: %s", e)
         self.last_duty = duty

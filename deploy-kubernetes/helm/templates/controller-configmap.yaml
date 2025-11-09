@@ -20,26 +20,28 @@ data:
     
     # Auto mode temperature thresholds (Celsius)
     # Only used when MODE=auto
-    TEMP_LOW={{ .Values.controller.config.tempLow | default 30 }}
-    TEMP_HIGH={{ .Values.controller.config.tempHigh | default 70 }}
+    TEMP_LOW={{ .Values.controller.config.tempLow | default 45 }}
+    TEMP_HIGH={{ .Values.controller.config.tempHigh | default 60 }}
     
     # Auto mode fan speed percentages (0-100)
     # Only used when MODE=auto
-    FAN_SPEED_LOW={{ .Values.controller.config.fanSpeedLow | default 0 }}
+    FAN_SPEED_LOW={{ .Values.controller.config.fanSpeedLow | default 30 }}
     FAN_SPEED_HIGH={{ .Values.controller.config.fanSpeedHigh | default 100 }}
     
     # Minimum operating fan speed (percentage)
-    # Many fans don't spin below 10% duty cycle. This setting ensures the fan
+    # Noctua PWM fans are very silent and can run continuously at 30%
+    # Many fans don't spin below this threshold. This setting ensures the fan
     # either stays off (0%) or runs at minimum operating speed or higher.
     # If calculated speed falls between 0 and this value, it will snap to either
     # 0% (if temp <= FAN_STOP_TEMP) or this minimum value (if temp > FAN_STOP_TEMP)
-    FAN_MIN_OPERATING_SPEED={{ .Values.controller.config.fanMinOperatingSpeed | default 10 }}
+    FAN_MIN_OPERATING_SPEED={{ .Values.controller.config.fanMinOperatingSpeed | default 30 }}
     
     # Temperature threshold for fan stop (Celsius)
     # Below this temperature, fan will be completely off (0%)
     # Above this temperature, fan will run at minimum FAN_MIN_OPERATING_SPEED or higher
-    # Set to 0 to disable automatic fan stop
-    FAN_STOP_TEMP={{ .Values.controller.config.fanStopTemp | default 20 }}
+    # Set to 0 to disable automatic fan stop (fan always runs at minimum speed)
+    # Noctua fans: Set to 0 to keep fan running continuously at 30%
+    FAN_STOP_TEMP={{ .Values.controller.config.fanStopTemp | default 0 }}
     
     # Fan curve type: "linear", "exponential", or "step"
     # Only used when MODE=auto
@@ -62,3 +64,16 @@ data:
     # Prevents rapid speed changes near zone boundaries
     # Temperature must change by this amount to trigger a zone change
     STEP_HYSTERESIS={{ .Values.controller.config.stepHysteresis | default 2 }}
+    
+    # PWM frequency (Hz)
+    # Standard 4-pin PWM fans: 25000 Hz (25 kHz, Intel PWM specification)
+    # Older/simple fans: 50 Hz
+    # Note: Not all GPIO libraries support high frequencies in containers
+    PWM_FREQUENCY={{ .Values.controller.config.pwmFrequency | default 25000 }}
+    
+    # PWM signal inversion for NanoCluster board
+    # The NanoCluster board uses an open-drain MOSFET configuration:
+    # - true: Invert PWM (0% = 100% speed, 100% = 0% speed) - REQUIRED for NanoCluster
+    # - false: Normal PWM (0% = 0% speed, 100% = 100% speed) - For standard PWM boards
+    # Default: true (NanoCluster hardware)
+    PWM_INVERTED={{ .Values.controller.config.pwmInverted | default "true" }}

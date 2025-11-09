@@ -1,25 +1,15 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-sipeed
+  name: grafana-dashboard-system
   labels:
     app: grafana
     grafana_dashboard: "1"
 data:
-  sipeed-cm5-monitoring.json: |
+  sipeed-system.json: |
     {
       "annotations": {
-        "list": [
-          {
-            "builtIn": 1,
-            "datasource": "-- Grafana --",
-            "enable": true,
-            "hide": true,
-            "iconColor": "rgba(0, 211, 255, 1)",
-            "name": "Annotations & Alerts",
-            "type": "dashboard"
-          }
-        ]
+        "list": []
       },
       "editable": true,
       "fiscalYearStartMonth": 0,
@@ -30,161 +20,7 @@ data:
       "panels": [
         {
           "datasource": "Prometheus",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "drawStyle": "line",
-                "fillOpacity": 10,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "tooltip": false,
-                  "viz": false,
-                  "legend": false
-                },
-                "lineInterpolation": "smooth",
-                "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "never",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 60
-                  },
-                  {
-                    "color": "red",
-                    "value": 75
-                  }
-                ]
-              },
-              "unit": "celsius"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 10,
-            "w": 18,
-            "x": 0,
-            "y": 0
-          },
-          "id": 1,
-          "options": {
-            "legend": {
-              "calcs": ["last", "max", "mean"],
-              "displayMode": "table",
-              "placement": "right",
-              "showLegend": true
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "none"
-            }
-          },
-          "pluginVersion": "10.2.2",
-          "targets": [
-            {
-              "datasource": "Prometheus",
-              "editorMode": "code",
-              "expr": "node_temperature_celsius{job=\"sipeed-fan-controller\"}",
-              "legendFormat": "{{`{{exported_instance}}`}}",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "CPU Temperature per Node",
-          "type": "timeseries"
-        },
-        {
-          "datasource": "Prometheus",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "max": 100,
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 50
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "percent"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 10,
-            "w": 6,
-            "x": 18,
-            "y": 0
-          },
-          "id": 2,
-          "options": {
-            "orientation": "auto",
-            "reduceOptions": {
-              "values": false,
-              "calcs": ["lastNotNull"],
-              "fields": ""
-            },
-            "showThresholdLabels": false,
-            "showThresholdMarkers": true,
-            "text": {}
-          },
-          "pluginVersion": "10.2.2",
-          "targets": [
-            {
-              "datasource": "Prometheus",
-              "editorMode": "code",
-              "expr": "fan_duty_percent",
-              "legendFormat": "Fan Speed",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Current Fan Speed",
-          "type": "gauge"
-        },
-        {
-          "datasource": "Prometheus",
+          "description": "Memory usage breakdown",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -211,18 +47,16 @@ data:
                   "type": "linear"
                 },
                 "showPoints": "never",
-                "spanNulls": false,
+                "spanNulls": true,
                 "stacking": {
                   "group": "A",
-                  "mode": "none"
+                  "mode": "normal"
                 },
                 "thresholdsStyle": {
                   "mode": "off"
                 }
               },
               "mappings": [],
-              "max": 100,
-              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -232,20 +66,20 @@ data:
                   }
                 ]
               },
-              "unit": "percent"
+              "unit": "decbytes"
             },
             "overrides": []
           },
           "gridPos": {
             "h": 8,
-            "w": 24,
+            "w": 12,
             "x": 0,
-            "y": 10
+            "y": 0
           },
-          "id": 3,
+          "id": 1,
           "options": {
             "legend": {
-              "calcs": ["last", "max", "mean"],
+              "calcs": ["last", "mean"],
               "displayMode": "table",
               "placement": "bottom",
               "showLegend": true
@@ -255,26 +89,56 @@ data:
               "sort": "none"
             }
           },
-          "pluginVersion": "10.2.2",
           "targets": [
             {
               "datasource": "Prometheus",
               "editorMode": "code",
-              "expr": "fan_duty_percent",
-              "legendFormat": "Fan Speed %",
+              "expr": "node_memory_bytes{instance=~\"$node\", type=~\"memtotal|memavailable|cached|buffers\"}",
+              "legendFormat": "{{`{{instance}}`}} - {{`{{type}}`}}",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "Fan Speed History",
+          "title": "Memory Usage",
           "type": "timeseries"
         },
         {
           "datasource": "Prometheus",
+          "description": "System load averages",
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "thresholds"
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "Load",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "tooltip": false,
+                  "viz": false,
+                  "legend": false
+                },
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
               },
               "mappings": [],
               "thresholds": {
@@ -286,25 +150,93 @@ data:
                   },
                   {
                     "color": "yellow",
-                    "value": 60
+                    "value": 2
                   },
                   {
                     "color": "red",
-                    "value": 75
+                    "value": 4
                   }
                 ]
               },
-              "unit": "celsius"
+              "unit": "short"
             },
             "overrides": []
           },
           "gridPos": {
-            "h": 5,
-            "w": 24,
-            "x": 0,
-            "y": 18
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
           },
-          "id": 4,
+          "id": 2,
+          "options": {
+            "legend": {
+              "calcs": ["last", "max"],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "editorMode": "code",
+              "expr": "node_load_average{instance=~\"$node\"}",
+              "legendFormat": "{{`{{instance}}`}} - {{`{{period}}`}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "CPU Load Average",
+          "type": "timeseries"
+        },
+        {
+          "datasource": "Prometheus",
+          "description": "Disk usage per mount point",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "max": 100,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "orange",
+                    "value": 85
+                  },
+                  {
+                    "color": "red",
+                    "value": 95
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "id": 3,
           "options": {
             "displayMode": "gradient",
             "minVizHeight": 10,
@@ -317,27 +249,218 @@ data:
             },
             "showUnfilled": true
           },
-          "pluginVersion": "10.2.2",
           "targets": [
             {
               "datasource": "Prometheus",
               "editorMode": "code",
-              "expr": "node_temperature_celsius{job=\"sipeed-fan-controller\"}",
-              "legendFormat": "{{`{{exported_instance}}`}}",
+              "expr": "node_filesystem_use_percent{instance=~\"$node\"}",
+              "legendFormat": "{{`{{instance}}`}} - {{`{{mountpoint}}`}}",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "Current Temperatures - All Nodes",
+          "title": "Disk Usage %",
           "type": "bargauge"
+        },
+        {
+          "datasource": "Prometheus",
+          "description": "Network I/O for all interfaces",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "Bytes/sec",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "tooltip": false,
+                  "viz": false,
+                  "legend": false
+                },
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "Bps"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/.*TX.*/"
+                },
+                "properties": [
+                  {
+                    "id": "custom.transform",
+                    "value": "negative-Y"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "id": 4,
+          "options": {
+            "legend": {
+              "calcs": ["last", "mean"],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "editorMode": "code",
+              "expr": "rate(node_network_receive_bytes_total{instance=~\"$node\", interface!~\"lo|veth.*\"}[5m])",
+              "legendFormat": "{{`{{instance}}`}}-{{`{{interface}}`}} RX",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": "Prometheus",
+              "editorMode": "code",
+              "expr": "rate(node_network_transmit_bytes_total{instance=~\"$node\", interface!~\"lo|veth.*\"}[5m])",
+              "legendFormat": "{{`{{instance}}`}}-{{`{{interface}}`}} TX",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Network I/O",
+          "type": "timeseries"
+        },
+        {
+          "datasource": "Prometheus",
+          "description": "System uptime",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 3600
+                  },
+                  {
+                    "color": "green",
+                    "value": 86400
+                  }
+                ]
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 24,
+            "x": 0,
+            "y": 16
+          },
+          "id": 5,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "values": false,
+              "calcs": ["lastNotNull"],
+              "fields": ""
+            },
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "editorMode": "code",
+              "expr": "node_uptime_seconds{instance=~\"$node\"}",
+              "legendFormat": "{{`{{instance}}`}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "System Uptime",
+          "type": "stat"
         }
       ],
       "refresh": "5s",
       "schemaVersion": 38,
       "style": "dark",
-      "tags": ["sipeed", "cm5", "temperature", "fan"],
+      "tags": ["sipeed", "cm5", "system"],
       "templating": {
-        "list": []
+        "list": [
+          {
+            "current": {
+              "selected": false,
+              "text": "All",
+              "value": "$__all"
+            },
+            "datasource": "Prometheus",
+            "definition": "label_values(node_temperature_celsius, instance)",
+            "hide": 0,
+            "includeAll": true,
+            "label": "Node",
+            "multi": true,
+            "name": "node",
+            "options": [],
+            "query": {
+              "query": "label_values(node_temperature_celsius, instance)",
+              "refId": "PrometheusVariableQueryEditor-VariableQuery"
+            },
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "type": "query"
+          }
+        ]
       },
       "time": {
         "from": "now-1h",
@@ -345,8 +468,8 @@ data:
       },
       "timepicker": {},
       "timezone": "",
-      "title": "Sipeed CM5 - Temperature & Fan Control",
-      "uid": "sipeed-cm5-monitoring",
+      "title": "Sipeed CM5 - System Resources",
+      "uid": "sipeed-system",
       "version": 1,
       "weekStart": ""
     }

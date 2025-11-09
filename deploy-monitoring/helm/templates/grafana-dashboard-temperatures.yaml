@@ -1,25 +1,15 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-sipeed
+  name: grafana-dashboard-temperatures
   labels:
     app: grafana
     grafana_dashboard: "1"
 data:
-  sipeed-cm5-monitoring.json: |
+  sipeed-temperatures.json: |
     {
       "annotations": {
-        "list": [
-          {
-            "builtIn": 1,
-            "datasource": "-- Grafana --",
-            "enable": true,
-            "hide": true,
-            "iconColor": "rgba(0, 211, 255, 1)",
-            "name": "Annotations & Alerts",
-            "type": "dashboard"
-          }
-        ]
+        "list": []
       },
       "editable": true,
       "fiscalYearStartMonth": 0,
@@ -30,6 +20,7 @@ data:
       "panels": [
         {
           "datasource": "Prometheus",
+          "description": "CPU, NVMe, and RP1 temperatures",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -38,12 +29,12 @@ data:
               "custom": {
                 "axisCenteredZero": false,
                 "axisColorMode": "text",
-                "axisLabel": "",
+                "axisLabel": "Temperature °C",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
                 "drawStyle": "line",
-                "fillOpacity": 10,
-                "gradientMode": "none",
+                "fillOpacity": 20,
+                "gradientMode": "opacity",
                 "hideFrom": {
                   "tooltip": false,
                   "viz": false,
@@ -56,13 +47,13 @@ data:
                   "type": "linear"
                 },
                 "showPoints": "never",
-                "spanNulls": false,
+                "spanNulls": true,
                 "stacking": {
                   "group": "A",
                   "mode": "none"
                 },
                 "thresholdsStyle": {
-                  "mode": "off"
+                  "mode": "line"
                 }
               },
               "mappings": [],
@@ -78,17 +69,67 @@ data:
                     "value": 60
                   },
                   {
+                    "color": "orange",
+                    "value": 70
+                  },
+                  {
                     "color": "red",
-                    "value": 75
+                    "value": 80
                   }
                 ]
               },
               "unit": "celsius"
             },
-            "overrides": []
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/.*cpu.*/"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/.*nvme.*/"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "orange",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/.*rp1.*/"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "purple",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
           },
           "gridPos": {
-            "h": 10,
+            "h": 12,
             "w": 18,
             "x": 0,
             "y": 0
@@ -99,178 +140,31 @@ data:
               "calcs": ["last", "max", "mean"],
               "displayMode": "table",
               "placement": "right",
-              "showLegend": true
+              "showLegend": true,
+              "sortBy": "Last",
+              "sortDesc": true
             },
             "tooltip": {
               "mode": "multi",
-              "sort": "none"
+              "sort": "desc"
             }
           },
-          "pluginVersion": "10.2.2",
           "targets": [
             {
               "datasource": "Prometheus",
               "editorMode": "code",
-              "expr": "node_temperature_celsius{job=\"sipeed-fan-controller\"}",
-              "legendFormat": "{{`{{exported_instance}}`}}",
+              "expr": "node_temperature_celsius{instance=~\"$node\"}",
+              "legendFormat": "{{`{{instance}}`}} - {{`{{sensor}}`}}",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "CPU Temperature per Node",
+          "title": "Temperature Sensors - Time Series",
           "type": "timeseries"
         },
         {
           "datasource": "Prometheus",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "max": 100,
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 50
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "percent"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 10,
-            "w": 6,
-            "x": 18,
-            "y": 0
-          },
-          "id": 2,
-          "options": {
-            "orientation": "auto",
-            "reduceOptions": {
-              "values": false,
-              "calcs": ["lastNotNull"],
-              "fields": ""
-            },
-            "showThresholdLabels": false,
-            "showThresholdMarkers": true,
-            "text": {}
-          },
-          "pluginVersion": "10.2.2",
-          "targets": [
-            {
-              "datasource": "Prometheus",
-              "editorMode": "code",
-              "expr": "fan_duty_percent",
-              "legendFormat": "Fan Speed",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Current Fan Speed",
-          "type": "gauge"
-        },
-        {
-          "datasource": "Prometheus",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "drawStyle": "line",
-                "fillOpacity": 20,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "tooltip": false,
-                  "viz": false,
-                  "legend": false
-                },
-                "lineInterpolation": "smooth",
-                "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "never",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "max": 100,
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
-              },
-              "unit": "percent"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 24,
-            "x": 0,
-            "y": 10
-          },
-          "id": 3,
-          "options": {
-            "legend": {
-              "calcs": ["last", "max", "mean"],
-              "displayMode": "table",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "none"
-            }
-          },
-          "pluginVersion": "10.2.2",
-          "targets": [
-            {
-              "datasource": "Prometheus",
-              "editorMode": "code",
-              "expr": "fan_duty_percent",
-              "legendFormat": "Fan Speed %",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Fan Speed History",
-          "type": "timeseries"
-        },
-        {
-          "datasource": "Prometheus",
+          "description": "Current temperature readings",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -289,8 +183,12 @@ data:
                     "value": 60
                   },
                   {
+                    "color": "orange",
+                    "value": 70
+                  },
+                  {
                     "color": "red",
-                    "value": 75
+                    "value": 80
                   }
                 ]
               },
@@ -299,17 +197,17 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 5,
-            "w": 24,
-            "x": 0,
-            "y": 18
+            "h": 12,
+            "w": 6,
+            "x": 18,
+            "y": 0
           },
-          "id": 4,
+          "id": 2,
           "options": {
             "displayMode": "gradient",
             "minVizHeight": 10,
             "minVizWidth": 0,
-            "orientation": "horizontal",
+            "orientation": "vertical",
             "reduceOptions": {
               "values": false,
               "calcs": ["lastNotNull"],
@@ -317,27 +215,125 @@ data:
             },
             "showUnfilled": true
           },
-          "pluginVersion": "10.2.2",
           "targets": [
             {
               "datasource": "Prometheus",
               "editorMode": "code",
-              "expr": "node_temperature_celsius{job=\"sipeed-fan-controller\"}",
-              "legendFormat": "{{`{{exported_instance}}`}}",
+              "expr": "node_temperature_celsius{instance=~\"$node\"}",
+              "legendFormat": "{{`{{instance}}`}}-{{`{{sensor}}`}}",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "Current Temperatures - All Nodes",
+          "title": "Current Temperatures",
           "type": "bargauge"
+        },
+        {
+          "datasource": "Prometheus",
+          "description": "Sensor availability status",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "red",
+                      "index": 1,
+                      "text": "Unavailable"
+                    },
+                    "1": {
+                      "color": "green",
+                      "index": 0,
+                      "text": "Available"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 24,
+            "x": 0,
+            "y": 12
+          },
+          "id": 3,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "values": false,
+              "calcs": ["lastNotNull"],
+              "fields": ""
+            },
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "editorMode": "code",
+              "expr": "node_temperature_sensor_available{instance=~\"$node\"}",
+              "legendFormat": "{{`{{instance}}`}} - {{`{{sensor}}`}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Sensor Availability",
+          "type": "stat"
         }
       ],
       "refresh": "5s",
       "schemaVersion": 38,
       "style": "dark",
-      "tags": ["sipeed", "cm5", "temperature", "fan"],
+      "tags": ["sipeed", "cm5", "temperature"],
       "templating": {
-        "list": []
+        "list": [
+          {
+            "current": {
+              "selected": false,
+              "text": "All",
+              "value": "$__all"
+            },
+            "datasource": "Prometheus",
+            "definition": "label_values(node_temperature_celsius, instance)",
+            "hide": 0,
+            "includeAll": true,
+            "label": "Node",
+            "multi": true,
+            "name": "node",
+            "options": [],
+            "query": {
+              "query": "label_values(node_temperature_celsius, instance)",
+              "refId": "PrometheusVariableQueryEditor-VariableQuery"
+            },
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "type": "query"
+          }
+        ]
       },
       "time": {
         "from": "now-1h",
@@ -345,8 +341,8 @@ data:
       },
       "timepicker": {},
       "timezone": "",
-      "title": "Sipeed CM5 - Temperature & Fan Control",
-      "uid": "sipeed-cm5-monitoring",
+      "title": "Sipeed CM5 - Temperatures",
+      "uid": "sipeed-temperatures",
       "version": 1,
       "weekStart": ""
     }
